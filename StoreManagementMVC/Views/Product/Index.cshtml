@@ -1,0 +1,139 @@
+﻿@using StoreManagement.Models
+@model List<Product>
+
+@{
+    ViewData["Title"] = "Quản lý sản phẩm";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0 text-primary fw-bold">Danh sách sản phẩm</h3>
+    <button onclick="openModal()" class="btn btn-primary shadow-sm">
+        <i class="bi bi-plus-lg me-1"></i> Thêm mới
+    </button>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-secondary">
+                <tr>
+                    <th class="ps-3">ID</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Danh mục</th>
+                    <th>Nhà cung cấp</th>
+                    <th class="text-end">Giá bán</th>
+                    <th>Đơn vị</th>
+                    <th class="text-center">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="ps-3 text-muted">#@item.ProductId</td>
+                        <td class="fw-bold text-dark">@item.ProductName</td>
+                        <td><span class="badge bg-light text-dark border">@(item.Category?.CategoryName ?? "-")</span></td>
+                        <td><small class="text-muted">@(item.Supplier?.Name ?? "-")</small></td>
+                        <td class="text-end fw-bold text-success">@item.Price.ToString("N0") ₫</td>
+                        <td>@item.Unit</td>
+                        <td class="text-center">
+                            <button onclick="openModal(@item.ProductId)" class="btn btn-sm btn-outline-warning me-1" title="Sửa"><i class="bi bi-pencil"></i></button>
+                            <button onclick="deleteProduct(@item.ProductId)" class="btn btn-sm btn-outline-danger" title="Xóa"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (totalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { p = currentPage - 1 })">Trước</a>
+            </li>
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(currentPage == i ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { p = i })">@i</a>
+                </li>
+            }
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { p = currentPage + 1 })">Sau</a>
+            </li>
+        </ul>
+    </nav>
+}
+
+<div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Thông tin sản phẩm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // 1. Mở Modal (Thêm hoặc Sửa)
+        function openModal(id = null) {
+            $('#productModal').modal('show');
+            $('#modalBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
+
+            // Gọi Action Upsert của Controller
+            let url = id ? `/Product/Upsert?id=${id}` : '/Product/Upsert';
+
+            $.get(url, function (data) {
+                $('#modalBody').html(data);
+
+                // Gán sự kiện submit form (AJAX)
+                initFormSubmit();
+            }).fail(function() {
+                $('#modalBody').html('<p class="text-danger text-center">Lỗi tải dữ liệu!</p>');
+            });
+        }
+
+        // 2. Xử lý Submit Form trong Modal
+        function initFormSubmit() {
+            $('#upsertForm').submit(function (e) {
+                e.preventDefault();
+                $.post('/Product/Upsert', $(this).serialize(), function (res) {
+                    if (res.success) {
+                        $('#productModal').modal('hide');
+                        Swal.fire({ icon: 'success', title: 'Thành công', text: 'Dữ liệu đã được lưu!', timer: 1500, showConfirmButton: false })
+                            .then(() => location.reload());
+                    } else {
+                         Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra khi lưu.' });
+                    }
+                });
+            });
+        }
+
+        // 3. Xóa sản phẩm
+        function deleteProduct(id) {
+            Swal.fire({
+                title: 'Bạn chắc chắn chứ?', text: "Dữ liệu sẽ không thể khôi phục!", icon: 'warning',
+                showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Xóa ngay', cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('/Product/Delete', { id: id }, function (res) {
+                        if (res.success) {
+                            Swal.fire('Đã xóa!', 'Sản phẩm đã bị xóa.', 'success').then(() => location.reload());
+                        }
+                    });
+                }
+            })
+        }
+    </script>
+}

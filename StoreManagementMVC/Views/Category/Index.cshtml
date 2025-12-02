@@ -1,0 +1,88 @@
+﻿@using StoreManagement.Models
+@model List<Category>
+@{
+    ViewData["Title"] = "Quản lý danh mục";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0 text-primary fw-bold">Danh sách Danh mục</h3>
+    <button onclick="openModal()" class="btn btn-primary shadow-sm">
+        <i class="bi bi-plus-lg me-1"></i> Thêm mới
+    </button>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-secondary">
+                <tr>
+                    <th class="ps-3" style="width: 50px;">ID</th>
+                    <th>Tên danh mục</th>
+                    <th class="text-center" style="width: 150px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="ps-3 text-muted">#@item.CategoryId</td>
+                        <td class="fw-bold text-dark">@item.CategoryName</td>
+                        <td class="text-center">
+                            <button onclick="openModal(@item.CategoryId)" class="btn btn-sm btn-outline-warning me-1"><i class="bi bi-pencil"></i></button>
+                            <button onclick="deleteCategory(@item.CategoryId)" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Thông tin danh mục</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openModal(id = null) {
+            $('#categoryModal').modal('show');
+            $('#modalBody').html('<div class="text-center py-3"><div class="spinner-border text-primary"></div></div>');
+            let url = id ? `/Category/Upsert?id=${id}` : '/Category/Upsert';
+
+            $.get(url, function (data) {
+                $('#modalBody').html(data);
+                $('#upsertForm').submit(function (e) {
+                    e.preventDefault();
+                    $.post('/Category/Upsert', $(this).serialize(), function (res) {
+                        if (res.success) {
+                            $('#categoryModal').modal('hide');
+                            Swal.fire('Thành công', '', 'success').then(() => location.reload());
+                        }
+                    });
+                });
+            });
+        }
+
+        function deleteCategory(id) {
+            Swal.fire({
+                title: 'Xóa danh mục?', text: "Dữ liệu sẽ mất vĩnh viễn!", icon: 'warning',
+                showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('/Category/Delete', { id: id }, function (res) {
+                        if (res.success) Swal.fire('Đã xóa', '', 'success').then(() => location.reload());
+                    });
+                }
+            })
+        }
+    </script>
+}
