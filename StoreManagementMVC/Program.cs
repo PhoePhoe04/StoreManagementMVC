@@ -1,6 +1,6 @@
-using Microsoft.EntityFrameworkCore;
-using StoreManagement.Data;
-using StoreManagement.Services;
+﻿using Microsoft.EntityFrameworkCore;
+using StoreManagementMVC.Data;
+using StoreManagementMVC.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +13,23 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<CustomerService>();
+builder.Services.AddScoped<SupplierService>();
+builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<PromotionService>();
+builder.Services.AddScoped<PaymentService>();
 
+// Cấu hình CORS để cho phép Blazor Client truy cập API
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBlazorClient",
+        policy =>
+        {
+            policy.WithOrigins("https://localhost:7200", "http://localhost:5200") 
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
 
 var app = builder.Build();
 
@@ -30,10 +46,18 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Kích hoạt CORS 
+app.UseCors("AllowBlazorClient");
+
 app.UseAuthorization();
 
+// Route dành cho Admin (Areas)
+app.MapControllerRoute(
+    name: "MyArea",
+    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
+
+// Route mặc định dành cho Client 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
-
 app.Run();

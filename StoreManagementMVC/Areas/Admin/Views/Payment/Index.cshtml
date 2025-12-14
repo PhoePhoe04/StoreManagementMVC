@@ -1,0 +1,109 @@
+﻿@model List<Payment>
+@{
+    ViewData["Title"] = "Lịch sử thanh toán";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h3 class="text-primary fw-bold">Lịch sử Giao dịch</h3>
+    </div>
+    <div class="col-md-4 text-end">
+        <div class="card bg-success text-white shadow-sm">
+            <div class="card-body p-2">
+                <small>Tổng doanh thu thực tế</small>
+                <h4 class="mb-0 fw-bold">@(((decimal)ViewBag.TotalRevenue).ToString("N0")) ₫</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-3">
+    <div class="card-body py-3">
+        <form method="get" class="row g-3 align-items-center">
+            <div class="col-auto">
+                <label class="col-form-label fw-bold">Từ ngày:</label>
+            </div>
+            <div class="col-auto">
+                <input type="date" name="from" value="@ViewBag.FromDate" class="form-control">
+            </div>
+            <div class="col-auto">
+                <label class="col-form-label fw-bold">Đến ngày:</label>
+            </div>
+            <div class="col-auto">
+                <input type="date" name="to" value="@ViewBag.ToDate" class="form-control">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-filter"></i> Lọc</button>
+                <a href="/Payment" class="btn btn-outline-secondary">Đặt lại</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-secondary">
+                <tr>
+                    <th class="ps-3">ID</th>
+                    <th>Mã đơn hàng</th>
+                    <th>Khách hàng</th>
+                    <th class="text-end">Số tiền</th>
+                    <th class="text-center">Phương thức</th>
+                    <th>Thời gian</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="ps-3 text-muted">#@item.PaymentId</td>
+                        <td><a href="/Order/Details/@item.OrderId" class="text-decoration-none fw-bold">#@item.OrderId</a></td>
+                        <td>@(item.Order?.Customer?.Name ?? "Khách lẻ")</td>
+                        <td class="text-end fw-bold text-success">+ @item.Amount.ToString("N0") ₫</td>
+                        <td class="text-center">
+                            @switch (item.PaymentMethod)
+                            {
+                                case "cash":
+                                    <span class="badge bg-success">Tiền mặt</span>
+                                    ; break;
+                                case "card":
+                                    <span class="badge bg-primary">Thẻ</span>
+                                    ; break;
+                                case "bank_transfer":
+                                    <span class="badge bg-info text-dark">Chuyển khoản</span>
+                                    ; break;
+                                default:
+                                    <span class="badge bg-secondary">Khác</span>
+                                    ; break;
+                            }
+                        </td>
+                        <td>@item.PaymentDate.ToString("dd/MM/yyyy HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (totalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { p = currentPage - 1, from = ViewBag.FromDate, to = ViewBag.ToDate })">Trước</a>
+            </li>
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(currentPage == i ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { p = i, from = ViewBag.FromDate, to = ViewBag.ToDate })">@i</a>
+                </li>
+            }
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { p = currentPage + 1, from = ViewBag.FromDate, to = ViewBag.ToDate })">Sau</a>
+            </li>
+        </ul>
+    </nav>
+}

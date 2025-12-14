@@ -1,0 +1,34 @@
+﻿@model Customer
+
+<form id="upsertForm" method="post">
+    <input type="hidden" asp-for="CustomerId" />
+    <input type="hidden" asp-for="CreatedAt" />
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Tên khách hàng <span class="text-danger">*</span></label>
+            <input asp-for="Name" class="form-control" required placeholder="Nhập họ tên..." />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Số điện thoại</label>
+            <input asp-for="Phone" class="form-control" placeholder="09xxxx..." />
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-bold">Email</label>
+        <input asp-for="Email" type="email" class="form-control" placeholder="example@mail.com" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-bold">Địa chỉ</label>
+        <textarea asp-for="Address" class="form-control" rows="3" placeholder="Số nhà, tên đường..."></textarea>
+    </div>
+
+    <div class="text-end border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-save me-1"></i> Lưu lại
+        </button>
+    </div>
+</form>

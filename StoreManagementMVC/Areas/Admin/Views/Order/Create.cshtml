@@ -1,0 +1,352 @@
+﻿@using StoreManagementMVC.Models
+@{
+    ViewData["Title"] = "Tạo đơn hàng mới";
+    var customers = ViewBag.Customers as List<Customer>;
+}
+
+<style>
+    #searchResult {
+        position: absolute;
+        width: 100%;
+        max-height: 300px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ccc;
+        border-top: none;
+        z-index: 9999; /* Đảm bảo nằm trên cùng */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .search-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+
+        .search-item:hover {
+            background-color: #f8f9fa;
+            color: #0d6efd;
+        }
+</style>
+
+<div class="row h-100">
+    <div class="col-md-8 d-flex flex-column">
+        <div class="card shadow-sm mb-3" style="overflow: visible;">
+            <div class="card-body position-relative">
+                <div class="input-group input-group-lg">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" id="productSearch" class="form-control border-start-0" placeholder="Nhập tên sản phẩm (VD: Coca)..." autocomplete="off">
+                </div>
+
+                <div id="searchResult" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm flex-grow-1">
+            <div class="card-header bg-light fw-bold">Giỏ hàng</div>
+            <div class="table-responsive flex-grow-1">
+                <table class="table table-hover align-middle" id="cartTable">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Sản phẩm</th>
+                            <th class="text-center" style="width: 120px;">Số lượng</th>
+                            <th class="text-end" style="width: 150px;">Đơn giá</th>
+                            <th class="text-end" style="width: 150px;">Thành tiền</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id="emptyRow">
+                            <td colspan="5" class="text-center text-muted py-5">
+                                <i class="bi bi-cart-x fs-1 d-block mb-2"></i>
+                                Chưa có sản phẩm nào
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title fw-bold mb-3">Thông tin đơn hàng</h5>
+
+                <div class="mb-3">
+                    <label class="form-label">Khách hàng</label>
+                    <select id="customerId" class="form-select">
+                        @if (customers != null)
+                        {
+                            foreach (var c in customers)
+                            {
+                                <option value="@c.CustomerId">@c.Name (@c.Phone)</option>
+                            }
+                        }
+                    </select>
+                    <div class="mt-2 text-end">
+                        <a href="/Customer" target="_blank" class="small text-decoration-none"><i class="bi bi-person-plus"></i> Thêm khách mới</a>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                <div class="input-group mb-3">
+                    <input type="text" id="promoCode" class="form-control" placeholder="Mã giảm giá" style="text-transform: uppercase;">
+                    <button class="btn btn-outline-primary" type="button" onclick="applyPromotion()">Áp dụng</button>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Tạm tính:</span>
+                    <span class="fw-bold" id="lblSubtotal">0 ₫</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Giảm giá:</span>
+                    <span>0 ₫</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 text-success">
+                    <span>Giảm giá:</span>
+                    <span id="lblDiscount">0 ₫</span>
+                </div>
+                <div class="d-flex justify-content-between fs-4 fw-bold text-primary mt-3">
+                    <span>Tổng cộng:</span>
+                    <span id="lblTotal">0 ₫</span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Phương thức thanh toán</label>
+                    <select id="paymentMethod" class="form-select">
+                        <option value="cash">Tiền mặt</option>
+                        <option value="bank_transfer">Chuyển khoản (QR Code)</option>
+                        <option value="card">Thẻ tín dụng</option>
+                        <option value="e-wallet">Ví điện tử</option>
+                    </select>
+                </div>
+                <div class="mt-auto pt-4">
+                    <button onclick="submitOrder()" class="btn btn-primary w-100 py-3 fs-5 fw-bold shadow">
+                        <i class="bi bi-cash-coin me-2"></i> THANH TOÁN
+                    </button>
+                    <a href="/Order" class="btn btn-outline-secondary w-100 mt-2">Hủy bỏ</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let cart = [];
+        let typingTimer;
+        let currentDiscount = 0;
+        let currentPromoId = null;
+
+        $(document).ready(function () {
+            // --- LOGIC TÌM KIẾM (GIỮ NGUYÊN) ---
+            $("#productSearch").on("input", function () {
+                var keyword = $(this).val();
+                clearTimeout(typingTimer);
+                $("#searchResult").hide();
+                if (keyword.length < 1) return;
+
+                typingTimer = setTimeout(function () {
+                    $.ajax({
+                        url: "/Order/SearchProduct",
+                        data: { term: keyword },
+                        success: function (data) { renderSearchResults(data); },
+                        error: function () { console.error("Lỗi tìm kiếm"); }
+                    });
+                }, 300);
+            });
+
+            $(document).on("click", function (e) {
+                if (!$(e.target).closest("#productSearch, #searchResult").length) {
+                    $("#searchResult").hide();
+                }
+            });
+        });
+
+        // --- HÀM HIỂN THỊ KẾT QUẢ TÌM KIẾM ---
+        function renderSearchResults(products) {
+            var $box = $("#searchResult");
+            $box.empty();
+            if (!products || products.length === 0) {
+                $box.html('<div class="p-3 text-muted text-center">Không tìm thấy sản phẩm</div>');
+            } else {
+                products.forEach(p => {
+                    var html = `
+                        <div class="search-item d-flex justify-content-between align-items-center"
+                             style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;"
+                             data-id="${p.id}" data-name="${p.name}" data-price="${p.price}"
+                             onclick="selectProductFromDiv(this)">
+                            <span class="fw-bold">${p.name}</span>
+                            <span class="text-success">${p.price.toLocaleString('vi-VN')} ₫</span>
+                        </div>`;
+                    $box.append(html);
+                });
+            }
+            $box.show();
+        }
+
+        function selectProductFromDiv(element) {
+            var id = $(element).data('id');
+            var name = $(element).data('name');
+            var price = $(element).data('price');
+            selectProduct(id, name, price);
+        }
+
+        function selectProduct(id, name, price) {
+            addToCart({ id: id, name: name, price: price });
+            $("#productSearch").val('');
+            $("#searchResult").hide();
+            $("#productSearch").focus();
+        }
+
+        // --- CÁC HÀM GIỎ HÀNG ---
+        function addToCart(product) {
+            let existingItem = cart.find(x => x.id === product.id);
+            if (existingItem) {
+                existingItem.quantity++;
+            } else {
+                cart.push({ id: product.id, name: product.name, price: product.price, quantity: 1 });
+            }
+            renderCart();
+        }
+
+        function removeFromCart(id) {
+            cart = cart.filter(x => x.id !== id);
+            renderCart();
+        }
+
+        function updateQuantity(id, newQty) {
+            let item = cart.find(x => x.id === id);
+            if (item) {
+                item.quantity = parseInt(newQty);
+                if (item.quantity <= 0) removeFromCart(id);
+                else renderCart();
+            }
+        }
+
+        // --- HÀM VẼ GIỎ HÀNG (SỬA LOGIC GỌI PROMOTION) ---
+        function renderCart() {
+            let tbody = $('#cartTable tbody');
+            tbody.empty();
+
+            if (cart.length === 0) {
+                tbody.html('<tr id="emptyRow"><td colspan="5" class="text-center text-muted py-5">Chưa có sản phẩm nào</td></tr>');
+                // Reset hết khi giỏ trống
+                currentDiscount = 0;
+                $('#promoCode').val('');
+                calculateTotal(0);
+                return;
+            }
+
+            let subtotal = 0;
+            cart.forEach(item => {
+                let itemSubtotal = item.price * item.quantity;
+                subtotal += itemSubtotal;
+                let row = `<tr>
+                    <td>${item.name}</td>
+                    <td class="text-center"><input type="number" min="1" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.quantity}" onchange="updateQuantity(${item.id}, this.value)"></td>
+                    <td class="text-end">${item.price.toLocaleString('vi-VN')} ₫</td>
+                    <td class="text-end fw-bold">${itemSubtotal.toLocaleString('vi-VN')} ₫</td>
+                    <td class="text-center"><button onclick="removeFromCart(${item.id})" class="btn btn-sm btn-link text-danger"><i class="bi bi-trash"></i></button></td>
+                </tr>`;
+                tbody.append(row);
+            });
+
+            // LOGIC QUAN TRỌNG:
+            // Nếu đang có mã giảm giá thì kiểm tra lại mã đó với tổng tiền mới
+            // Nếu không có mã thì tính tổng bình thường
+            if ($('#promoCode').val().trim() !== "") {
+                applyPromotion(); // Hàm này sẽ tự gọi calculateTotal sau khi check xong
+            } else {
+                currentDiscount = 0; // Reset giảm giá nếu không có mã
+                calculateTotal(subtotal);
+            }
+        }
+
+        // --- HÀM ÁP DỤNG KHUYẾN MÃI (SỬA LỖI COMMENT CODE) ---
+        function applyPromotion() {
+            let code = $('#promoCode').val();
+            let subtotal = 0;
+            cart.forEach(item => subtotal += item.price * item.quantity);
+
+            if (subtotal === 0) return; // Không báo lỗi ở đây để tránh spam popup khi renderCart
+
+            $.ajax({
+                url: '/Order/CheckPromotion',
+                data: { code: code, total: subtotal },
+                success: function (res) {
+                    if (res.success) {
+                        // SỬA: Bỏ comment để cập nhật biến toàn cục
+                        currentDiscount = res.discount;
+                        currentPromoId = res.promoId;
+
+                        // Hiển thị thông báo nhỏ (Toast) hoặc chỉ cần tính lại tiền
+                        // Swal.fire('Áp dụng mã thành công', '', 'success');
+                    } else {
+                        // Nếu mã không còn hợp lệ (VD: tổng tiền giảm xuống dưới mức tối thiểu)
+                        currentDiscount = 0;
+                        currentPromoId = null;
+                        // Swal.fire('Mã không hợp lệ', res.message, 'error');
+                    }
+                    // Dù thành công hay thất bại đều phải tính lại tổng cuối cùng
+                    calculateTotal(subtotal);
+                }
+            });
+        }
+
+        // --- HÀM TÍNH TỔNG CUỐI (CHỈ HIỂN THỊ, KHÔNG GỌI NGƯỢC) ---
+        function calculateTotal(subtotal) {
+            let finalTotal = subtotal - currentDiscount;
+            if (finalTotal < 0) finalTotal = 0;
+
+            $('#lblSubtotal').text(subtotal.toLocaleString('vi-VN') + ' ₫');
+
+            // Hiển thị giảm giá
+            if(currentDiscount > 0){
+                 $('#lblDiscount').text('- ' + currentDiscount.toLocaleString('vi-VN') + ' ₫');
+            } else {
+                 $('#lblDiscount').text('0 ₫');
+            }
+
+            $('#lblTotal').text(finalTotal.toLocaleString('vi-VN') + ' ₫');
+        }
+
+        // --- HÀM THANH TOÁN (SỬA LỖI THIẾU PROMOCODE) ---
+        function submitOrder() {
+            if (cart.length === 0) {
+                Swal.fire('Giỏ hàng trống!', 'Vui lòng chọn sản phẩm.', 'warning');
+                return;
+            }
+
+            let orderData = {
+                customerId: $('#customerId').val(),
+                promoCode: $('#promoCode').val(),
+                paymentMethod: $('#paymentMethod').val(),
+                items: cart.map(x => ({ productId: x.id, quantity: x.quantity, price: x.price })),
+            };
+
+            // Disable nút để tránh click đúp
+            let $btn = $("button[onclick='submitOrder()']");
+            $btn.prop("disabled", true).text("Đang xử lý...");
+
+            $.ajax({
+                url: '/Order/Create',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(orderData),
+                success: function (res) {
+                    if (res.success) {
+                        Swal.fire('Thành công!', `Đơn #${res.orderId} đã tạo.`, 'success')
+                            .then(() => window.location.href = `/Order/Details/${res.orderId}`);
+                    } else {
+                        Swal.fire('Lỗi', res.message, 'error');
+                        $btn.prop("disabled", false).html('<i class="bi bi-cash-coin me-2"></i> THANH TOÁN');
+                    }
+                },
+                error: function() {
+                     Swal.fire('Lỗi', 'Lỗi kết nối server', 'error');
+                     $btn.prop("disabled", false).html('<i class="bi bi-cash-coin me-2"></i> THANH TOÁN');
+                }
+            });
+        }
+    </script>
+}
