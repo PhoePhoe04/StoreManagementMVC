@@ -1,0 +1,148 @@
+﻿@model List<Promotion>
+@{
+    ViewData["Title"] = "Quản lý Khuyến mãi";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    string search = ViewBag.Search ?? "";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0 text-primary fw-bold">Danh sách Mã giảm giá</h3>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex">
+            <input type="text" name="search" value="@search" class="form-control me-2" placeholder="Tìm mã code..." style="width: 250px;">
+            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+        </form>
+        <button onclick="openModal()" class="btn btn-primary shadow-sm text-nowrap"><i class="bi bi-plus-lg me-1"></i> Tạo mã mới</button>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-secondary">
+                <tr>
+                    <th class="ps-3">Mã Code</th>
+                    <th>Giá trị giảm</th>
+                    <th>Thời gian</th>
+                    <th>Điều kiện</th>
+                    <th class="text-center">Trạng thái</th>
+                    <th class="text-center">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    // Logic tính toán hiển thị
+                    string valueDisplay = item.DiscountType == "percent"
+                    ? $"<span class='badge bg-info text-dark'>{item.DiscountValue:N0}%</span>"
+                    : $"<span class='badge bg-success'>{item.DiscountValue:N0} đ</span>";
+
+                    string statusClass = item.Status == "active"
+                    ? (DateTime.Now > item.EndDate ? "bg-secondary" : "bg-primary") // Hết hạn thì màu xám
+                    : "bg-danger";
+
+                    string statusText = item.Status == "active"
+                    ? (DateTime.Now > item.EndDate ? "Hết hạn" : "Đang chạy")
+                    : "Đã tắt";
+
+                    <tr>
+                        <td class="ps-3">
+                            <div class="fw-bold fs-5 text-primary">@item.PromoCode</div>
+                            <small class="text-muted">@item.Description</small>
+                        </td>
+                        <td>@Html.Raw(valueDisplay)</td>
+                        <td>
+                            <div class="small">Từ: @item.StartDate.ToString("dd/MM/yyyy")</div>
+                            <div class="small">Đến: @item.EndDate.ToString("dd/MM/yyyy")</div>
+                        </td>
+                        <td>
+                            <div class="small">Đơn tối thiểu: <strong>@item.MinOrderAmount.ToString("N0") đ</strong></div>
+                            <div class="small text-muted">Đã dùng: @item.UsedCount / @(item.UsageLimit == 0 ? "∞" : item.UsageLimit.ToString())</div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge @statusClass">@statusText</span>
+                        </td>
+                        <td class="text-center">
+                            <button onclick="openModal(@item.PromoId)" class="btn btn-sm btn-outline-warning me-1"><i class="bi bi-pencil"></i></button>
+                            <button onclick="deletePromo(@item.PromoId)" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (totalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { p = currentPage - 1, search = search })">Trước</a>
+            </li>
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(currentPage == i ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { p = i, search = search })">@i</a>
+                </li>
+            }
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { p = currentPage + 1, search = search })">Sau</a>
+            </li>
+        </ul>
+    </nav>
+}
+
+<div class="modal fade" id="promoModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Thông tin Khuyến mãi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openModal(id = null) {
+            $('#promoModal').modal('show');
+            $('#modalBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
+            let url = id ? `/Promotion/Upsert?id=${id}` : '/Promotion/Upsert';
+
+            $.get(url, function (data) {
+                $('#modalBody').html(data);
+                $('#upsertForm').submit(function (e) {
+                    e.preventDefault();
+                    $.post('/Promotion/Upsert', $(this).serialize(), function (res) {
+                        if (res.success) {
+                            $('#promoModal').modal('hide');
+                            Swal.fire({ icon: 'success', title: 'Thành công', timer: 1000, showConfirmButton: false }).then(() => location.reload());
+                        } else {
+                            Swal.fire('Lỗi', res.message, 'error');
+                        }
+                    });
+                });
+            });
+        }
+
+        function deletePromo(id) {
+            Swal.fire({
+                title: 'Xóa mã này?', text: "Dữ liệu sẽ mất vĩnh viễn!", icon: 'warning',
+                showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('/Promotion/Delete', { id: id }, function (res) {
+                        if (res.success) Swal.fire('Đã xóa', '', 'success').then(() => location.reload());
+                        else Swal.fire('Lỗi', res.message, 'error');
+                    });
+                }
+            })
+        }
+    </script>
+}

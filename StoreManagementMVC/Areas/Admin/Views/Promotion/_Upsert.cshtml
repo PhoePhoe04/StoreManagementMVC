@@ -1,0 +1,76 @@
+﻿@model Promotion
+
+<form id="upsertForm" method="post">
+    <input type="hidden" asp-for="PromoId" />
+    <input type="hidden" asp-for="UsedCount" />
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Mã Code <span class="text-danger">*</span></label>
+            <input asp-for="PromoCode" class="form-control text-uppercase fw-bold" placeholder="VD: SUMMER2025" required />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Trạng thái</label>
+            <select asp-for="Status" class="form-select">
+                <option value="active">Đang hoạt động</option>
+                <option value="inactive">Ngừng hoạt động</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-bold">Mô tả</label>
+        <input asp-for="Description" class="form-control" placeholder="Giảm giá mùa hè..." />
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Loại giảm giá</label>
+            <select asp-for="DiscountType" class="form-select" id="discountType">
+                <option value="percent">Theo phần trăm (%)</option>
+                <option value="fixed">Số tiền cố định (VNĐ)</option>
+            </select>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Giá trị giảm</label>
+            <input asp-for="DiscountValue" type="number" class="form-control" required min="0" />
+            <small class="text-muted" id="discountHint">Nhập số % giảm (VD: 10)</small>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Ngày bắt đầu</label>
+            <input asp-for="StartDate" type="date" class="form-control" required />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Ngày kết thúc</label>
+            <input asp-for="EndDate" type="date" class="form-control" required />
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Đơn tối thiểu</label>
+            <input asp-for="MinOrderAmount" type="number" class="form-control" min="0" value="@(Model.MinOrderAmount == 0 ? "" : Model.MinOrderAmount)" placeholder="0" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Giới hạn số lần dùng</label>
+            <input asp-for="UsageLimit" type="number" class="form-control" min="0" value="@(Model.UsageLimit == 0 ? "" : Model.UsageLimit)" placeholder="0 (Không giới hạn)" />
+        </div>
+    </div>
+
+    <div class="text-end border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i> Lưu lại</button>
+    </div>
+</form>
+
+<script>
+    // Script nhỏ để đổi gợi ý khi chọn loại giảm giá
+    document.getElementById('discountType').addEventListener('change', function() {
+        var hint = document.getElementById('discountHint');
+        if(this.value === 'percent') hint.innerText = 'Nhập số % giảm (VD: 10)';
+        else hint.innerText = 'Nhập số tiền giảm (VD: 50000)';
+    });
+</script>

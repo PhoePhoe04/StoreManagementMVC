@@ -1,0 +1,120 @@
+﻿@model Order
+@{
+    ViewData["Title"] = "Chi tiết đơn hàng #" + Model.OrderId;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <a href="/Order" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
+    <div>
+        @if (Model.Status == "pending")
+        {
+            <button onclick="updateStatus(@Model.OrderId, 'paid')" class="btn btn-success me-2"><i class="bi bi-check-lg"></i> Xác nhận Thanh toán</button>
+            <button onclick="updateStatus(@Model.OrderId, 'canceled')" class="btn btn-danger"><i class="bi bi-x-lg"></i> Hủy đơn</button>
+        }
+        else
+        {
+            <span class="text-muted fst-italic">Đơn hàng đã hoàn tất hoặc bị hủy.</span>
+        }
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light fw-bold">Thông tin khách hàng</div>
+            <div class="card-body">
+                <p class="mb-1"><strong>Khách hàng:</strong> @(Model.Customer?.Name ?? "Khách lẻ")</p>
+                <p class="mb-1"><strong>SĐT:</strong> @(Model.Customer?.Phone ?? "-")</p>
+                <p class="mb-0"><strong>Địa chỉ:</strong> @(Model.Customer?.Address ?? "-")</p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-light fw-bold">Thông tin đơn hàng</div>
+            <div class="card-body">
+                <p class="mb-1"><strong>Mã đơn:</strong> #@Model.OrderId</p>
+                <p class="mb-1"><strong>Ngày tạo:</strong> @Model.OrderDate.ToString("dd/MM/yyyy HH:mm")</p>
+                <p class="mb-1"><strong>Nhân viên:</strong> @(Model.User?.FullName ?? "Admin")</p>
+                <p class="mb-0">
+                    <strong>Trạng thái:</strong>
+                    @if (Model.Status == "paid")
+                    {
+                        <span class="text-success fw-bold">Đã thanh toán</span>
+                    }
+                    else if (Model.Status == "pending")
+                    {
+                        <span class="text-warning fw-bold">Chờ xử lý</span>
+                    }
+                    else
+                    {
+                        <span class="text-danger fw-bold">Đã hủy</span>
+                    }
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white">Chi tiết sản phẩm</div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Sản phẩm</th>
+                            <th class="text-center">SL</th>
+                            <th class="text-end">Đơn giá</th>
+                            <th class="text-end">Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.OrderItems)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">@item.Product?.ProductName</div>
+                                    <small class="text-muted">@item.Product?.Barcode</small>
+                                </td>
+                                <td class="text-center">@item.Quantity</td>
+                                <td class="text-end">@item.Price.ToString("N0") ₫</td>
+                                <td class="text-end fw-bold">@item.Subtotal.ToString("N0") ₫</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="3" class="text-end fw-bold">Tổng cộng:</td>
+                            <td class="text-end fw-bold text-danger fs-5">@Model.TotalAmount.ToString("N0") ₫</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function updateStatus(id, newStatus) {
+            let actionText = newStatus === 'paid' ? 'Xác nhận thanh toán?' : 'Hủy đơn hàng này?';
+
+            Swal.fire({
+                title: actionText,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Đồng ý',
+                cancelButtonText: 'Không'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('/Order/UpdateStatus', { id: id, status: newStatus }, function (res) {
+                        if (res.success) {
+                            Swal.fire('Thành công', '', 'success').then(() => location.reload());
+                        } else {
+                            Swal.fire('Lỗi', res.message, 'error');
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+}

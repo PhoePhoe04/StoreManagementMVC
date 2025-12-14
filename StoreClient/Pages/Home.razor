@@ -1,0 +1,46 @@
+﻿@page "/"
+@using Store.Shared
+@inject HttpClient Http
+
+<PageTitle>Trang chủ - Cửa hàng Online</PageTitle>
+
+<div class="container mt-4">
+    <h2 class="mb-4">Sản phẩm nổi bật</h2>
+
+    @if (products == null)
+    {
+        <p><em>Đang tải sản phẩm...</em></p>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var p in products)
+            {
+                <div class="col-md-3 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <img src="https://via.placeholder.com/300" class="card-img-top" alt="@p.ProductName">
+                        <div class="card-body">
+                            <h5 class="card-title">@p.ProductName</h5>
+                            <p class="card-text text-success fw-bold">@p.Price.ToString("N0") ₫</p>
+                        </div>
+                        <div class="card-footer bg-white border-top-0">
+                            <button class="btn btn-primary w-100">
+                                <i class="bi bi-cart-plus"></i> Thêm vào giỏ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private Product[]? products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Gọi API từ Backend
+        products = await Http.GetFromJsonAsync<Product[]>("api/productapi");
+    }
+}

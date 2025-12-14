@@ -1,0 +1,119 @@
+﻿@model DashboardViewModel
+@{
+    ViewData["Title"] = "Tổng quan kinh doanh";
+}
+
+<div class="mb-4">
+    <h3 class="fw-bold text-dark">Tổng quan kinh doanh</h3>
+    <p class="text-muted">Số liệu cập nhật mới nhất hôm nay</p>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase mb-1 opacity-75">Doanh thu</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalRevenue.ToString("N0") ₫</h3>
+                    </div>
+                    <i class="bi bi-currency-dollar fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-primary shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase mb-1 opacity-75">Đơn hàng</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalOrders</h3>
+                    </div>
+                    <i class="bi bi-cart-check fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase mb-1 opacity-75">Sản phẩm</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalProducts</h3>
+                    </div>
+                    <i class="bi bi-box-seam fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-info shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase mb-1 opacity-75">Khách hàng</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalCustomers</h3>
+                    </div>
+                    <i class="bi bi-people fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-clock-history me-2"></i>Đơn hàng mới nhất</h5>
+        <a href="/Order" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Mã đơn</th>
+                    <th>Khách hàng</th>
+                    <th>Ngày đặt</th>
+                    <th class="text-end">Tổng tiền</th>
+                    <th class="text-center">Trạng thái</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.RecentOrders)
+                {
+                    <tr>
+                        <td class="ps-4 fw-bold">#@item.OrderId</td>
+                        <td>
+                            <div>@item.Customer?.Name</div>
+                            <small class="text-muted">@item.Customer?.Phone</small>
+                        </td>
+                        <td>@item.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td class="text-end fw-bold">@item.TotalAmount.ToString("N0") ₫</td>
+                        <td class="text-center">
+                            @if (item.Status == "paid")
+                            {
+                                <span class="badge bg-success">Đã thanh toán</span>
+                            }
+                            else if (item.Status == "pending")
+                            {
+                                <span class="badge bg-warning text-dark">Chờ xử lý</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Đã hủy</span>
+                            }
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="/Order/Details/@item.OrderId" class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i></a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

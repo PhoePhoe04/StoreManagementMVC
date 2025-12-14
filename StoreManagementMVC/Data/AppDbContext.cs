@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using StoreManagement.Models;
+using Store.Shared;
 
-namespace StoreManagement.Data
+namespace StoreManagementMVC.Data
 {
     public class AppDbContext : DbContext
     {
@@ -20,6 +20,7 @@ namespace StoreManagement.Data
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<Payment> Payments { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
