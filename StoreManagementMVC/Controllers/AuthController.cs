@@ -4,12 +4,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using StoreManagementMVC.Data;
 using Store.Shared;
+using Store.Shared.Entities;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+
 
 namespace StoreManagementMVC.Controllers
 {
