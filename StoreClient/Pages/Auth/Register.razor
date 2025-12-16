@@ -1,0 +1,53 @@
+﻿@page "/register"
+@layout StoreClient.Layout.AuthLayout
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<h3 class="text-center">Đăng Ký</h3>
+
+<EditForm Model="@registerModel" OnValidSubmit="@HandleRegister">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group mb-3">
+        <label>Tên đăng nhập</label>
+        <InputText @bind-Value="registerModel.Username" class="form-control" />
+    </div>
+    <div class="form-group mb-3">
+        <label>Email</label>
+        <InputText type="email" @bind-Value="registerModel.Email" class="form-control" />
+    </div>
+    <div class="form-group mb-3">
+        <label>Mật khẩu</label>
+        <InputText type="password" @bind-Value="registerModel.Password" class="form-control" />
+    </div>
+    <div class="form-group mb-3">
+        <label>Xác nhận mật khẩu</label>
+        <InputText type="password" @bind-Value="registerModel.ConfirmPassword" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-success w-100">Đăng Ký</button>
+</EditForm>
+
+<div class="text-center mt-3">
+    Đã có tài khoản? <a href="/login">Đăng nhập</a>
+</div>
+
+@code {
+    private RegisterModel registerModel = new();
+
+    private async Task HandleRegister()
+    {
+        // Gọi API register ở đây
+        // Sau khi thành công: Navigation.NavigateTo("/login");
+    }
+
+    public class RegisterModel
+    {
+        [Required] public string Username { get; set; } = "";
+        [Required, EmailAddress] public string Email { get; set; } = "";
+        [Required] public string Password { get; set; } = "";
+        [Compare("Password")] public string ConfirmPassword { get; set; } = "";
+    }
+}
