@@ -7,7 +7,7 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
 {
     [Area("Admin")]
     [Route("Admin/[controller]/[action]")]
-    public class OrderController : Controller
+    public class OrderController : AdminBaseController
     {
         private readonly OrderService _service;
         private readonly CustomerService _customerService;

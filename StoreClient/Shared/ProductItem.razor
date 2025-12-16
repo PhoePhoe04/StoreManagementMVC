@@ -2,9 +2,27 @@
 
 <div class="card h-100 border-0 shadow-hover product-card">
     <div class="ratio ratio-4x3 position-relative overflow-hidden">
-        <img src="@($"https://picsum.photos/300?random={Product.ProductId}")"
-        class="card-img-top object-fit-cover @(Product.Quantity == 0 ? "opacity-50" : "")"
-        alt="@Product.ProductName">
+        @{
+            // Khai báo đường dẫn Backend (Cổng 7177)
+            string backendUrl = "https://localhost:7177";
+
+            // Logic ghép đường dẫn: Backend + Đường dẫn trong DB
+            string imageUrl;
+            if (string.IsNullOrEmpty(Product.ImageUrl))
+            {
+                // Nếu không có ảnh -> Lấy ảnh mặc định từ Backend
+                imageUrl = $"{backendUrl}/images/products/default-image.png";
+            }
+            else
+            {
+                imageUrl = $"{backendUrl}{Product.ImageUrl}";
+            }
+        }
+
+        <img src="@imageUrl"
+             class="card-img-top object-fit-cover @(Product.Quantity == 0 ? "opacity-50" : "")"
+             alt="@Product.ProductName"
+             onerror="this.onerror=null;this.src='@backendUrl/images/products/default-image.png';">
 
         @if (Product.Quantity == 0)
         {

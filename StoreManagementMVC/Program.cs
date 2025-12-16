@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using StoreManagementMVC.Data;
 using StoreManagementMVC.Services;
@@ -33,6 +34,16 @@ builder.Services.AddCors(options =>
         });
 });
 
+// Thêm dịch vụ Authentication bằng Cookie
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        // Cấu hình đường dẫn: Nếu chưa đăng nhập mà vào Admin -> Tự đá về trang này
+        options.LoginPath = "/Admin/Account/Login";
+        options.AccessDeniedPath = "/Admin/Account/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(60); // Cookie sống trong 60 phút
+    });
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -51,7 +62,8 @@ app.UseRouting();
 // Kích hoạt CORS 
 app.UseCors("AllowBlazorClient");
 
-app.UseAuthorization();
+app.UseAuthentication(); // Xác thực danh tính (Bạn là ai?)
+app.UseAuthorization(); // Phân quyền (Bạn được làm gì?)
 
 // Route dành cho Admin (Areas)
 app.MapControllerRoute(

@@ -147,5 +147,18 @@ namespace StoreManagementMVC.Controllers.Api
             }
 
         }
+
+        // GET: api/OrderApi/history/1
+        [HttpGet("history/{customerId}")]
+        public async Task<IActionResult> GetOrderHistory(int customerId)
+        {
+            var orders = await _context.Orders
+                .Include(o => o.OrderItems) // Kèm chi tiết sản phẩm
+                .Where(o => o.CustomerId == customerId)
+                .OrderByDescending(o => o.OrderDate) // Đơn mới nhất lên đầu
+                .ToListAsync();
+
+            return Ok(orders);
+        }
     }
 }

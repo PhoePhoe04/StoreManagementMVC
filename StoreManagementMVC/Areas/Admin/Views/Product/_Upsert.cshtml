@@ -1,65 +1,82 @@
 ﻿@using Store.Shared.Entities
 @model Product
 
-<form id="upsertForm" method="post">
+<form id="upsertForm" enctype="multipart/form-data">
     <input type="hidden" asp-for="ProductId" />
+
+    <input type="hidden" asp-for="ImageUrl" />
 
     <div class="row">
         <div class="col-md-8">
             <div class="mb-3">
-                <label class="form-label fw-bold">Tên sản phẩm <span class="text-danger">*</span></label>
-                <input asp-for="ProductName" class="form-control" placeholder="Nhập tên sản phẩm..." required />
+                <label class="form-label fw-bold">Tên sản phẩm</label>
+                <input asp-for="ProductName" class="form-control" required />
             </div>
-
+            <div class="mb-3">
+                <label class="form-label fw-bold">Mã vạch (Barcode)</label>
+                <input asp-for="Barcode" class="form-control" placeholder="Nhập mã vạch hoặc để trống..." />
+                <span asp-validation-for="Barcode" class="text-danger"></span>
+            </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold">Danh mục</label>
-                    <select asp-for="CategoryId" asp-items="ViewBag.CategoryList" class="form-select">
-                        <option value="">-- Chọn danh mục --</option>
-                    </select>
+                    <label class="form-label fw-bold">Giá</label>
+                    <input asp-for="Price" type="number" class="form-control" required />
                 </div>
+
                 <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold">Nhà cung cấp</label>
-                    <select asp-for="SupplierId" asp-items="ViewBag.SupplierList" class="form-select">
-                        <option value="">-- Chọn NCC --</option>
-                    </select>
+                    <label class="form-label fw-bold">Số lượng tồn</label>
+                    <input asp-for="Inventory.Quantity" type="number" class="form-control" />
                 </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Danh mục</label>
+                <select asp-for="CategoryId" asp-items="ViewBag.CategoryList" class="form-select">
+                    <option disabled selected>-- Chọn danh mục --</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Nhà cung cấp</label>
+                <select asp-for="SupplierId" asp-items="ViewBag.SupplierList" class="form-select">
+                    <option disabled selected>-- Chọn nhà cung cấp --</option>
+                </select>
             </div>
         </div>
 
         <div class="col-md-4">
             <div class="mb-3">
-                <label class="form-label fw-bold">Mã vạch</label>
+                <label class="form-label fw-bold">Hình ảnh</label>
+                <input type="file" name="file" class="form-control" accept="image/*" onchange="previewImage(this)" />
+            </div>
 
-                <input asp-for="Barcode" class="form-control"
-                       placeholder="Để trống sẽ tự sinh mã" />
-                <small class="text-muted">Nếu để trống, hệ thống sẽ tự tạo mã theo ID.</small>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">Giá bán</label>
-                <div class="input-group">
-                    <input asp-for="Price" type="number" class="form-control" required />
-                    <span class="input-group-text">₫</span>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">Số lượng tồn</label>
-                <input asp-for="Inventory.Quantity" type="number" class="form-control" placeholder="0" min="0" />
-                <small class="text-muted fst-italic">Nhập số lượng ban đầu</small>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">Đơn vị tính</label>
-                <input asp-for="Unit" class="form-control" placeholder="Vd: cái, hộp..." />
+            <div class="border p-1 text-center bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                @{
+                    // Logic hiển thị ảnh: Nếu null thì hiện default
+                    string imagePath = string.IsNullOrEmpty(Model.ImageUrl)
+                    ? "/images/products/default-image.png"
+                    : Model.ImageUrl;
+                }
+                <img id="imgPreview" src="@imagePath" style="max-width: 100%; max-height: 100%; object-fit: contain;"
+                     onerror="this.src='/images/products/default-image.png'" />
             </div>
         </div>
     </div>
 
-    <hr class="my-3" />
-
-    <div class="d-flex justify-content-end gap-2">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-        <button type="submit" class="btn btn-primary px-4">
-            <i class="bi bi-save me-1"></i> Lưu lại
-        </button>
+    <div class="text-end mt-3 border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="submit" class="btn btn-primary">Lưu lại</button>
     </div>
 </form>
+
+<script>
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                $('#imgPreview').attr('src', e.target.result);
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+</script>

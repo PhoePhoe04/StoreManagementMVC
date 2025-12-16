@@ -6,7 +6,7 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
 {
     [Area("Admin")]
     [Route("Admin/[controller]/[action]")]
-    public class PromotionController : Controller
+    public class PromotionController : AdminBaseController
     {
         private readonly PromotionService _service;
 

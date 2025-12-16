@@ -114,42 +114,43 @@
 
         // Xử lý Submit Form trong Modal
         function initFormSubmit() {
-            $('#upsertForm').submit(function (e) {
+            $('#upsertForm').off('submit').on('submit', function (e) {
                 e.preventDefault();
 
+                var formData = new FormData(this);
                 let postUrl = '@Url.Action("Upsert", "Product", new { area = "Admin" })';
 
-                $.post(postUrl, $(this).serialize(), function (res) {
-                    if (res.success) {
-                        $('#productModal').modal('hide');
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Thành công',
-                            text: 'Dữ liệu đã được lưu!',
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => location.reload());
-                    } else {
-                        // Hiển thị thông báo lỗi cụ thể từ Server
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Lỗi',
-                            text: res.message // Hiện dòng lỗi chi tiết
-                        });
+                $.ajax({
+                    url: postUrl,
+                    type: 'POST',
+                    data: formData, 
+                    contentType: false,
+                    processData: false,
+                    cache: false,
+
+                    success: function (res) {
+                        if (res.success) {
+                            $('#productModal').modal('hide');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Thành công',
+                                text: 'Dữ liệu đã được lưu!',
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire('Lỗi', res.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Lỗi', 'Lỗi kết nối server', 'error');
                     }
-                }).fail(function(xhr, status, error) {
-                    // Xử lý trường hợp lỗi hệ thống (500)
-                    Swal.fire({ icon: 'error', title: 'Lỗi hệ thống', text: xhr.responseText || error });
                 });
             });
         }
 
         // Xóa sản phẩm
         function deleteProduct(id) {
-            // Swal.fire({
-            //     title: 'Bạn chắc chắn chứ?', text: "Dữ liệu sẽ không thể khôi phục!", icon: 'warning',
-            //     showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#6c757d',
-            //     confirmButtonText: 'Xóa ngay', cancelButtonText: 'Hủy'
             Swal.fire({
                 title: 'Bạn chắc chắn chứ?',
                 text: "Dữ liệu sẽ không thể khôi phục!",

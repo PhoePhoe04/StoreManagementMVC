@@ -6,6 +6,8 @@
         public string ProductName { get; set; } = string.Empty;
         public decimal Price { get; set; }
 
+        public string? ImageUrl { get; set; }
+
         // Đây là trường tổng hợp từ bảng Inventory
         public int Quantity { get; set; }
 
