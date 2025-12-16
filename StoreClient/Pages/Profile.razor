@@ -1,0 +1,97 @@
+﻿@page "/profile"
+@using Store.Shared.Entities
+@inject HttpClient Http
+@inject ToastService ToastService
+
+<PageTitle>Thông tin cá nhân</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="list-group">
+                <a href="/profile" class="list-group-item list-group-item-action active">
+                    <i class="bi bi-person-circle me-2"></i> Thông tin tài khoản
+                </a>
+                <a href="/history" class="list-group-item list-group-item-action">
+                    <i class="bi bi-clock-history me-2"></i> Lịch sử đơn hàng
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold">Cập nhật thông tin</h5>
+                </div>
+                <div class="card-body">
+                    @if (customer == null)
+                    {
+                        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+                    }
+                    else
+                    {
+                        <EditForm Model="customer" OnValidSubmit="HandleUpdate">
+                            <DataAnnotationsValidator />
+
+                            <div class="mb-3">
+                                <label class="form-label">Họ và tên</label>
+                                <InputText @bind-Value="customer.Name" class="form-control" />
+                                <ValidationMessage For="@(() => customer.Name)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Số điện thoại</label>
+                                <InputText @bind-Value="customer.Phone" class="form-control" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <InputText @bind-Value="customer.Email" class="form-control" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Địa chỉ</label>
+                                <InputTextArea @bind-Value="customer.Address" class="form-control" rows="3" />
+                            </div>
+
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="bi bi-save me-1"></i> Lưu thay đổi
+                            </button>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Customer? customer;
+    private int fakeCustomerId = 1; // HARDCODE: Giả lập User ID = 1
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Gọi API lấy thông tin
+        try
+        {
+            customer = await Http.GetFromJsonAsync<Customer>($"api/CustomerApi/{fakeCustomerId}");
+        }
+        catch
+        {
+            ToastService.ShowToast("Không tìm thấy thông tin khách hàng", ToastLevel.Error);
+        }
+    }
+
+    private async Task HandleUpdate()
+    {
+        var response = await Http.PutAsJsonAsync($"api/CustomerApi/{fakeCustomerId}", customer);
+        if (response.IsSuccessStatusCode)
+        {
+            ToastService.ShowToast("Cập nhật thành công!", ToastLevel.Success);
+        }
+        else
+        {
+            ToastService.ShowToast("Lỗi khi cập nhật.", ToastLevel.Error);
+        }
+    }
+}

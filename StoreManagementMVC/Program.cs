@@ -1,3 +1,6 @@
+
+﻿using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.Cookies;
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
@@ -73,7 +76,17 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Thêm dịch vụ Authentication bằng Cookie
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        // Cấu hình đường dẫn: Nếu chưa đăng nhập mà vào Admin -> Tự đá về trang này
+        options.LoginPath = "/Admin/Account/Login";
+        options.AccessDeniedPath = "/Admin/Account/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(60); // Cookie sống trong 60 phút
+    });
 #endregion
+
 
 var app = builder.Build();
 
@@ -88,8 +101,8 @@ app.UseRouting();
 
 app.UseCors("AllowBlazorClient");
 
-app.UseAuthentication();
-app.UseAuthorization();
+app.UseAuthentication(); // Xác thực danh tính (Bạn là ai?)
+app.UseAuthorization(); // Phân quyền (Bạn được làm gì?)
 
 // 👉 API endpoints
 app.MapControllers();

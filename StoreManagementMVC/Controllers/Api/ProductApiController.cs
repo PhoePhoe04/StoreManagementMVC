@@ -82,7 +82,7 @@ namespace StoreManagementMVC.Controllers.Api
                     Price = x.p.Price,
                     CategoryId = x.p.CategoryId ?? 0,
                     CategoryName = x.c != null ? x.c.CategoryName : "Chưa phân loại",
-
+                    ImageUrl = x.p.ImageUrl,
                     // Logic lấy số lượng: Nếu inv có dữ liệu thì lấy Quantity, không thì bằng 0
                     Quantity = x.inv != null ? x.inv.Quantity : 0
                 })
@@ -114,6 +114,7 @@ namespace StoreManagementMVC.Controllers.Api
                     Price = x.p.Price,
                     CategoryId = x.p.CategoryId ?? 0,
                     CategoryName = x.p.Category != null ? x.p.Category.CategoryName : "",
+                    ImageUrl = x.p.ImageUrl,
                     Quantity = x.inv != null ? x.inv.Quantity : 0
                 })
                 .ToListAsync();
@@ -141,6 +142,7 @@ namespace StoreManagementMVC.Controllers.Api
                     Price = x.p.Price,
                     CategoryId = x.p.CategoryId ?? 0,
                     CategoryName = x.p.Category != null ? x.p.Category.CategoryName : "",
+                    ImageUrl = x.p.ImageUrl,
                     Quantity = x.inv != null ? x.inv.Quantity : 0
                 })
                 .ToListAsync();

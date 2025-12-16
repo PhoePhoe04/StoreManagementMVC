@@ -9,7 +9,7 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
     [Route("Admin")]
     [Route("Admin/Home")]
     [Route("Admin/Home/Index")]
-    public class HomeController : Controller
+    public class HomeController : AdminBaseController
     {
         private readonly DashboardService _dashboardService;
 

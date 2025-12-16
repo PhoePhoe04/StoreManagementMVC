@@ -6,7 +6,7 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
 {
     [Area("Admin")]
     [Route("Admin/[controller]/[action]")]
-    public class SupplierController : Controller
+    public class SupplierController : AdminBaseController
     {
         private readonly SupplierService _service;
 

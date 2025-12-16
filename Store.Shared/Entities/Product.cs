@@ -32,6 +32,9 @@ namespace Store.Shared.Entities
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
+        [Column("image_url")]
+        public string? ImageUrl { get; set; }
+
         // Relationships
         [ForeignKey("CategoryId")]
         public virtual Category? Category { get; set; }

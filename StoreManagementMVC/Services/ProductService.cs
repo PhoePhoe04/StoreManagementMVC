@@ -75,6 +75,7 @@ namespace StoreManagementMVC.Services
                 existingProd.SupplierId = product.SupplierId;
                 existingProd.Unit = product.Unit;
                 existingProd.Barcode = product.Barcode;
+                existingProd.ImageUrl = product.ImageUrl;
 
                 if (existingProd.Inventory != null && product.Inventory != null)
                 {

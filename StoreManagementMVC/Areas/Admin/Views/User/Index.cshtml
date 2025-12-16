@@ -1,0 +1,119 @@
+﻿@using Store.Shared.Entities
+@model List<User>
+@{
+    ViewData["Title"] = "Quản lý Nhân viên";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0 text-primary fw-bold">Danh sách Nhân viên</h3>
+    <button onclick="openModal()" class="btn btn-primary shadow-sm">
+        <i class="bi bi-person-plus-fill me-1"></i> Thêm nhân viên
+    </button>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-secondary">
+                <tr>
+                    <th class="ps-3">ID</th>
+                    <th>Tên đăng nhập</th>
+                    <th>Họ và tên</th>
+                    <th>Vai trò</th>
+                    <th>Ngày tạo</th>
+                    <th class="text-center">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="ps-3 text-muted">#@item.UserId</td>
+                        <td class="fw-bold text-dark">@item.Username</td>
+                        <td>@item.FullName</td>
+                        <td>
+                            @if (item.Role == "admin")
+                            {
+                                <span class="badge bg-danger">Quản trị viên</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-info text-dark">Nhân viên</span>
+                            }
+                        </td>
+                        <td class="text-muted small">@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td class="text-center">
+                            <button onclick="openModal(@item.UserId)" class="btn btn-sm btn-outline-warning me-1">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button onclick="deleteUser(@item.UserId)" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Thông tin Nhân viên</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openModal(id = null) {
+            $('#userModal').modal('show');
+            $('#modalBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
+
+            // URL chuẩn Area Admin
+            let baseUrl = '@Url.Action("Upsert", "User", new { area = "Admin" })';
+            let url = id ? `${baseUrl}?id=${id}` : baseUrl;
+
+            $.get(url, function (data) {
+                $('#modalBody').html(data);
+
+                // Submit Form
+                $('#upsertForm').submit(function (e) {
+                    e.preventDefault();
+                    let postUrl = '@Url.Action("Upsert", "User", new { area = "Admin" })';
+
+                    $.post(postUrl, $(this).serialize(), function (res) {
+                        if (res.success) {
+                            $('#userModal').modal('hide');
+                            Swal.fire({ icon: 'success', title: 'Thành công', timer: 1000, showConfirmButton: false })
+                                .then(() => location.reload());
+                        } else {
+                            Swal.fire('Lỗi', res.message, 'error');
+                        }
+                    });
+                });
+            });
+        }
+
+        function deleteUser(id) {
+            Swal.fire({
+                title: 'Xóa nhân viên này?', text: "Không thể hoàn tác!", icon: 'warning',
+                showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy', confirmButtonColor: '#d33'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    let deleteUrl = '@Url.Action("Delete", "User", new { area = "Admin" })';
+                    $.post(deleteUrl, { id: id }, function (res) {
+                        if (res.success) Swal.fire('Đã xóa', '', 'success').then(() => location.reload());
+                        else Swal.fire('Lỗi', res.message, 'error');
+                    });
+                }
+            })
+        }
+    </script>
+}

@@ -6,7 +6,7 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
 {
     [Area("Admin")]
     [Route("Admin/[controller]/[action]")]
-    public class CategoryController : Controller
+    public class CategoryController : AdminBaseController
     {
         private readonly AppDbContext _context;
 

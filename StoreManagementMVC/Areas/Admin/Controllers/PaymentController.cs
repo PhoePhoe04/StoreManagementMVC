@@ -5,7 +5,7 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
 {
     [Area("Admin")]
     [Route("Admin/[controller]/[action]")]
-    public class PaymentController : Controller
+    public class PaymentController : AdminBaseController
     {
         private readonly PaymentService _service;
 
