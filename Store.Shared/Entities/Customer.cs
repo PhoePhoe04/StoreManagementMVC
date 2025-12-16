@@ -25,5 +25,8 @@ namespace Store.Shared.Entities
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        [Column("user_id")]
+        public int? UserId { get; set; }
     }
 }

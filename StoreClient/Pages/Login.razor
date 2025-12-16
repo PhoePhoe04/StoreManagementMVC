@@ -1,0 +1,87 @@
+﻿@page "/login"
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject CustomAuthStateProvider AuthProvider
+@layout AuthLayout
+@using Store.Shared.Dtos
+@using StoreClient.Services
+
+<div class="vh-100" style="background-color: #f8f9fa;">
+    <div class="container h-100">
+        <div class="row d-flex justify-content-center align-items-center h-100">
+            <div class="col-lg-12 col-xl-11">
+                <div class="card text-black" style="border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                    <div class="card-body p-md-5">
+                        <div class="row justify-content-center">
+                            <div class="col-md-10 col-lg-6 col-xl-5 order-2 order-lg-1">
+                                <p class="text-center h1 fw-bold mb-5 mx-1 mx-md-4 mt-4">Đăng nhập</p>
+                                <EditForm Model="@model" OnValidSubmit="@HandleLogin" class="mx-1 mx-md-4">
+                                    <DataAnnotationsValidator />
+                                    <div class="d-flex flex-row align-items-center mb-4">
+                                        <i class="fas fa-user fa-lg me-3 fa-fw text-primary"></i>
+                                        <div class="form-outline flex-fill mb-0">
+                                            <InputText @bind-Value="model.Username" class="form-control form-control-lg" />
+                                            <label class="form-label">Username</label>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-row align-items-center mb-4">
+                                        <i class="fas fa-lock fa-lg me-3 fa-fw text-primary"></i>
+                                        <div class="form-outline flex-fill mb-0">
+                                            <InputText @bind-Value="model.Password" type="password" class="form-control form-control-lg" />
+                                            <label class="form-label">Mật khẩu</label>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-4 mx-4">
+                                        <a href="/forgot-password" class="text-primary small">Quên mật khẩu?</a>
+                                        <a href="/register" class="text-primary small">Đăng ký</a>
+                                    </div>
+                                    <div class="d-flex justify-content-center mb-3 mb-lg-4">
+                                        <button type="submit" class="btn btn-primary btn-lg px-5">Đăng nhập</button>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(message))
+                                    {
+                                        <div class="text-center fw-medium @(message.Contains("thành công") ? "text-success" : "text-danger")">
+                                            @message
+                                        </div>
+                                    }
+                                </EditForm>
+                            </div>
+                            <div class="col-md-10 col-lg-6 col-xl-7 d-flex align-items-center order-1 order-lg-2">
+                                <img src="https://img.freepik.com/free-vector/online-shopping-isometric-landing-page-template-web-banner-purple-background_88138-451.jpg"
+                                     class="img-fluid rounded" alt="Online shopping illustration" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginDto model = new();
+    private string message = "";
+
+    private async Task HandleLogin()
+    {
+        var response = await Http.PostAsJsonAsync("api/AuthApi/login", model);
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+            await JS.InvokeVoidAsync("localStorage.setItem", "authToken", result.Token);
+            AuthProvider.NotifyUserChanged();
+            message = "Đăng nhập thành công!";
+            Nav.NavigateTo("/", forceLoad: true);
+        }
+        else
+        {
+            message = "Sai username hoặc mật khẩu.";
+        }
+    }
+
+    private class AuthResponse
+    {
+        public string Token { get; set; } = string.Empty;
+    }
+}

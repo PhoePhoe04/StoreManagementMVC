@@ -1,44 +1,72 @@
 ﻿@inject NavigationManager NavManager
 @inject HttpClient Http
 @inject CartService CartService
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
+@inject CustomAuthStateProvider CustomAuthProvider
 
 @implements IDisposable
 
-<nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
     <div class="container">
-        <a class="navbar-brand" href="/">
-            <i class="bi bi-bag-heart-fill me-2"></i>MyStore
+
+        <!-- Brand -->
+        <a class="navbar-brand fw-bold" href="/">
+            <i class="bi bi-bag-heart-fill me-2 text-primary"></i>MyStore
         </a>
 
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+        <!-- Toggle -->
+        <button class="navbar-toggler" type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#navbarContent">
             <span class="navbar-toggler-icon"></span>
         </button>
 
+        <!-- Content -->
         <div class="collapse navbar-collapse" id="navbarContent">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-bold">
+
+            <!-- Left -->
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-semibold">
+
                 <li class="nav-item">
-                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Trang chủ</NavLink>
+                    <NavLink class="nav-link"
+                             href=""
+                             Match="NavLinkMatch.All">
+                        Trang chủ
+                    </NavLink>
                 </li>
 
+                <!-- Categories -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" role="button" @onclick="ToggleDropdown">
+                    <a class="nav-link dropdown-toggle"
+                       role="button"
+                       @onclick="ToggleDropdown"
+                       @onclick:preventDefault>
                         Danh mục
                     </a>
 
-                    <ul class="dropdown-menu border-0 shadow @(showDropdown ? "show" : "")"
-                        style="@(showDropdown ? "display: block; position: absolute; inset: 0px auto auto 0px; margin: 0px; transform: translate(0px, 42px);" : "")">
+                    <ul class="dropdown-menu border-0 shadow @(showDropdown ? "show" : "")">
 
-                        <li><a class="dropdown-item" href="products" @onclick="CloseDropdown">Tất cả sản phẩm</a></li>
+                        <li>
+                            <NavLink class="dropdown-item"
+                                     href="/products"
+                                     @onclick="CloseDropdown">
+                                Tất cả sản phẩm
+                            </NavLink>
+                        </li>
 
-                        @if (categories != null)
+                        @if (categories.Any())
                         {
-                            <li><hr class="dropdown-divider"></li>
+                            <li><hr class="dropdown-divider" /></li>
+
                             @foreach (var cat in categories)
                             {
                                 <li>
-                                    <a class="dropdown-item" href="/products?categoryId=@cat.CategoryId" @onclick="CloseDropdown">
+                                    <NavLink class="dropdown-item"
+                                             href="@($"/products?categoryId={cat.CategoryId}")"
+                                             @onclick="CloseDropdown">
                                         @cat.CategoryName
-                                    </a>
+                                    </NavLink>
                                 </li>
                             }
                         }
@@ -46,23 +74,74 @@
                 </li>
             </ul>
 
-            <form class="d-flex me-3" role="search" style="min-width: 300px;" @onsubmit="HandleSearch">
+            <!-- Search -->
+            <form class="d-flex me-3"
+                  style="min-width:280px"
+                  @onsubmit="HandleSearch"
+                  @onsubmit:preventDefault>
                 <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                    <span class="input-group-text bg-light border-end-0">
+                        <i class="bi bi-search"></i>
+                    </span>
                     <input class="form-control border-start-0 bg-light"
-                           type="search"
                            placeholder="Tìm sản phẩm..."
-                           @bind="keyword">
+                           @bind="keyword" />
                 </div>
             </form>
 
+            <!-- Right -->
             <div class="d-flex align-items-center gap-3">
-                <a href="cart" class="btn btn-outline-light text-dark position-relative border-0">
-                    <i class="bi bi-cart3 fs-4"></i>
-                    <span class="badge bg-danger cart-badge">@cartCount</span>
-                </a>
 
-                <a href="login" class="btn btn-primary btn-sm px-3 rounded-pill">Đăng nhập</a>
+                <!-- Cart -->
+                <NavLink href="/cart" class="btn position-relative">
+                    <i class="bi bi-cart3 fs-4"></i>
+                    @if (cartCount > 0)
+                    {
+                        <span class="badge bg-danger position-absolute top-0 start-100 translate-middle">
+                            @cartCount
+                        </span>
+                    }
+                </NavLink>
+
+                <!-- Auth -->
+                @if (isAuthenticated)
+                {
+                    <div class="dropdown">
+                        <button class="btn btn-primary btn-sm rounded-pill dropdown-toggle"
+                                data-bs-toggle="dropdown">
+                            @userName
+                        </button>
+
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <NavLink class="dropdown-item" href="/profile">
+                                    Hồ sơ
+                                </NavLink>
+                            </li>
+                            <li>
+                                <NavLink class="dropdown-item" href="/order-history">
+                                    Đơn hàng
+                                </NavLink>
+                            </li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li>
+                                <a class="dropdown-item text-danger"
+                                   href="#"
+                                   @onclick="Logout"
+                                   @onclick:preventDefault>
+                                    Đăng xuất
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <NavLink href="/login"
+                             class="btn btn-primary btn-sm rounded-pill px-3">
+                        Đăng nhập
+                    </NavLink>
+                }
             </div>
         </div>
     </div>
@@ -70,66 +149,77 @@
 
 @code {
     private string? keyword;
-    private Category[]? categories; // Biến chứa danh sách danh mục
+    private Category[] categories = Array.Empty<Category>();
+    private int cartCount;
+    private bool showDropdown;
 
-    private int cartCount = 0;
+    private bool isAuthenticated;
+    private string userName = string.Empty;
 
-    private bool showDropdown = false;
-
-	// --- DROPDOWN CỦA DANH MỤC ---
-    private void ToggleDropdown()
-    {
-        showDropdown = !showDropdown; // Đảo trạng thái: Đang đóng thì mở, đang mở thì đóng
-    }
-
-    private void CloseDropdown()
-    {
-        showDropdown = false; // Bắt buộc đóng (dùng khi bấm vào link con)
-    }
-
-	// --- HÀM LOAD DATA CHO HEADER ---
     protected override async Task OnInitializedAsync()
+    {
+        CartService.OnChange += UpdateCartCount;
+        UpdateCartCount();
+
+        await LoadCategoriesSafe();
+        await UpdateAuthStateSafe();
+    }
+
+    private async Task LoadCategoriesSafe()
     {
         try
         {
-			// Tăng số lượng sản phẩm trong giỏ khi có thay đổi
-            UpdateCartCount();
-            CartService.OnChange += UpdateCartCount;
-
-            // Gọi API lấy danh mục từ Backend
-            categories = await Http.GetFromJsonAsync<Category[]>("api/CategoryApi");
+            categories = await Http.GetFromJsonAsync<Category[]>("api/CategoryApi")
+                         ?? Array.Empty<Category>();
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine("Lỗi tải danh mục: " + ex.Message);
+            categories = Array.Empty<Category>();
         }
     }
 
-    // --- HÀM XỬ LÝ GIỎ HÀNG ---
+    private async Task UpdateAuthStateSafe()
+    {
+        try
+        {
+            var state = await AuthProvider.GetAuthenticationStateAsync();
+            isAuthenticated = state.User.Identity?.IsAuthenticated ?? false;
+            userName = state.User.Identity?.Name ?? "";
+        }
+        catch
+        {
+            isAuthenticated = false;
+            userName = "";
+        }
+    }
+
     private void UpdateCartCount()
     {
-        // Tính tổng số lượng (VD: Mua 2 cái áo + 1 cái quần = 3)
         cartCount = CartService.GetCartItems().Sum(x => x.Quantity);
-        StateHasChanged(); // Bắt buộc giao diện vẽ lại
+        InvokeAsync(StateHasChanged);
     }
 
-    // Hủy đăng ký khi tắt component (tránh rò rỉ bộ nhớ)
+    private void ToggleDropdown() => showDropdown = !showDropdown;
+    private void CloseDropdown() => showDropdown = false;
+
+    private void HandleSearch()
+    {
+        var url = string.IsNullOrWhiteSpace(keyword)
+            ? "/products"
+            : $"/products?search={keyword}";
+
+        NavManager.NavigateTo(url);
+    }
+
+    private async Task Logout()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
+        CustomAuthProvider.NotifyUserChanged();
+        NavManager.NavigateTo("/", forceLoad: true);
+    }
+
     public void Dispose()
     {
         CartService.OnChange -= UpdateCartCount;
-    }
-
-
-	// --- HÀM XỬ LÝ TÌM KIẾM ---
-    private void HandleSearch()
-    {
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            NavManager.NavigateTo($"/products?search={keyword}");
-        }
-        else
-        {
-            NavManager.NavigateTo("/products");
-        }
     }
 }
