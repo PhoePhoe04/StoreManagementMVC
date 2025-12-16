@@ -1,4 +1,5 @@
-﻿@model List<Payment>
+﻿@using Store.Shared.Entities
+@model List<Payment>
 @{
     ViewData["Title"] = "Lịch sử thanh toán";
     int currentPage = ViewBag.CurrentPage ?? 1;
@@ -36,7 +37,7 @@
             </div>
             <div class="col-auto">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-filter"></i> Lọc</button>
-                <a href="/Payment" class="btn btn-outline-secondary">Đặt lại</a>
+                <a asp-area="Admin" asp-controller="Payment" asp-action="Index" class="btn btn-outline-secondary">Đặt lại</a>
             </div>
         </form>
     </div>
@@ -60,7 +61,10 @@
                 {
                     <tr>
                         <td class="ps-3 text-muted">#@item.PaymentId</td>
-                        <td><a href="/Order/Details/@item.OrderId" class="text-decoration-none fw-bold">#@item.OrderId</a></td>
+                        <td>
+                            <a asp-area="Admin" asp-controller="Order" asp-action="Details" asp-route-id="@item.OrderId"
+                            class="text-decoration-none fw-bold">#@item.OrderId</a>
+                        </td>
                         <td>@(item.Order?.Customer?.Name ?? "Khách lẻ")</td>
                         <td class="text-end fw-bold text-success">+ @item.Amount.ToString("N0") ₫</td>
                         <td class="text-center">

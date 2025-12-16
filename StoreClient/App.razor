@@ -1,12 +1,14 @@
-﻿<Router AppAssembly="@typeof(App).Assembly">
+﻿@using StoreClient.Layout
+
+<Router AppAssembly="@typeof(Program).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
-        <PageTitle>Not found</PageTitle>
+        <PageTitle>Không tìm thấy</PageTitle>
         <LayoutView Layout="@typeof(MainLayout)">
-            <p role="alert">Sorry, there's nothing at this address.</p>
+            <p role="alert">Xin lỗi, không tìm thấy trang này (404).</p>
         </LayoutView>
     </NotFound>
 </Router>

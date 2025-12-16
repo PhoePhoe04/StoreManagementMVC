@@ -1,14 +1,14 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Store.Shared
+namespace Store.Shared.Entities
 {
-    [Table("customers")]
-    public class Customer
+    [Table("suppliers")]
+    public class Supplier
     {
         [Key]
-        [Column("customer_id")]
-        public int CustomerId { get; set; }
+        [Column("supplier_id")]
+        public int SupplierId { get; set; }
 
         [Column("name")]
         [Required]
@@ -22,8 +22,5 @@ namespace Store.Shared
 
         [Column("address")]
         public string? Address { get; set; }
-
-        [Column("created_at")]
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 }

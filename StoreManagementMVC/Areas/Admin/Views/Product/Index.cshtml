@@ -1,4 +1,5 @@
-﻿@model List<Product>
+﻿@using Store.Shared.Entities
+@model List<Product>
 
 @{
     ViewData["Title"] = "Quản lý sản phẩm";
@@ -92,13 +93,14 @@
 
 @section Scripts {
     <script>
-        // 1. Mở Modal (Thêm hoặc Sửa)
+        // Mở Modal (Thêm hoặc Sửa)
         function openModal(id = null) {
             $('#productModal').modal('show');
             $('#modalBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
 
             // Gọi Action Upsert của Controller
-            let url = id ? `/Product/Upsert?id=${id}` : '/Product/Upsert';
+            let baseUrl = '@Url.Action("Upsert", "Product", new { area = "Admin" })';
+            let url = id ? `${baseUrl}?id=${id}` : baseUrl;
 
             $.get(url, function (data) {
                 $('#modalBody').html(data);
@@ -110,12 +112,14 @@
             });
         }
 
-        // 2. Xử lý Submit Form trong Modal
+        // Xử lý Submit Form trong Modal
         function initFormSubmit() {
             $('#upsertForm').submit(function (e) {
                 e.preventDefault();
 
-                $.post('/Product/Upsert', $(this).serialize(), function (res) {
+                let postUrl = '@Url.Action("Upsert", "Product", new { area = "Admin" })';
+
+                $.post(postUrl, $(this).serialize(), function (res) {
                     if (res.success) {
                         $('#productModal').modal('hide');
                         Swal.fire({
@@ -126,7 +130,6 @@
                             showConfirmButton: false
                         }).then(() => location.reload());
                     } else {
-                        // --- SỬA ĐOẠN NÀY ---
                         // Hiển thị thông báo lỗi cụ thể từ Server
                         Swal.fire({
                             icon: 'error',
@@ -141,15 +144,25 @@
             });
         }
 
-        // 3. Xóa sản phẩm
+        // Xóa sản phẩm
         function deleteProduct(id) {
+            // Swal.fire({
+            //     title: 'Bạn chắc chắn chứ?', text: "Dữ liệu sẽ không thể khôi phục!", icon: 'warning',
+            //     showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#6c757d',
+            //     confirmButtonText: 'Xóa ngay', cancelButtonText: 'Hủy'
             Swal.fire({
-                title: 'Bạn chắc chắn chứ?', text: "Dữ liệu sẽ không thể khôi phục!", icon: 'warning',
-                showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Xóa ngay', cancelButtonText: 'Hủy'
+                title: 'Bạn chắc chắn chứ?',
+                text: "Dữ liệu sẽ không thể khôi phục!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Xóa ngay',
+                cancelButtonText: 'Hủy'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    $.post('/Product/Delete', { id: id }, function (res) {
+                    let deleteUrl = '@Url.Action("Delete", "Product", new { area = "Admin" })';
+                    $.post(deleteUrl, { id: id }, function (res) {
                         if (res.success) {
                             Swal.fire('Đã xóa!', 'Sản phẩm đã bị xóa.', 'success').then(() => location.reload());
                         }

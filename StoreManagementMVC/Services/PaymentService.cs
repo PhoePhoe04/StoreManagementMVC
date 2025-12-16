@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using StoreManagementMVC.Data;
-using Store.Shared;
+using Store.Shared.Entities;
 
 namespace StoreManagementMVC.Services
 {

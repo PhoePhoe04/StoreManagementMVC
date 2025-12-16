@@ -1,0 +1,83 @@
+﻿@using StoreClient.Services
+@inject ToastService ToastService
+@implements IDisposable
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+    @foreach (var message in ToastService.Messages)
+    {
+        <div class="toast show align-items-center border-0 mb-2 shadow overflow-hidden position-relative" role="alert">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center gap-2">
+                    @if (message.Level == ToastLevel.Success)
+                    {
+                        <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                    }
+                    else
+                    {
+                        <i class="bi bi-trash3-fill text-danger fs-4"></i>
+                    }
+                    <span class="fw-medium">@message.Message</span>
+                </div>
+                <button type="button" class="btn-close me-2 m-auto" @onclick="() => Remove(message)"></button>
+            </div>
+
+            <div class="progress-bar-anim @(message.Level == ToastLevel.Success ? "bg-success" : "bg-danger")"></div>
+        </div>
+    }
+</div>
+
+<style>
+    /* Animation chạy từ 100% về 0% trong 3s */
+    .progress-bar-anim {
+        height: 4px;
+        width: 100%;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        animation: runProgress 3s linear forwards;
+    }
+
+    @@keyframes runProgress {
+        from {
+            width: 100%;
+        }
+
+        to {
+            width: 0%;
+        }
+    }
+
+    /* Hiệu ứng trượt vào khi xuất hiện */
+    .toast {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @@keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+</style>
+
+@code {
+    protected override void OnInitialized()
+    {
+        ToastService.OnChange += StateHasChanged;
+    }
+
+    private void Remove(ToastMessage message)
+    {
+        ToastService.Messages.Remove(message);
+    }
+
+    public void Dispose()
+    {
+        ToastService.OnChange -= StateHasChanged;
+    }
+}

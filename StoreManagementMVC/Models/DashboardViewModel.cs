@@ -1,4 +1,4 @@
-﻿using Store.Shared;
+﻿using Store.Shared.Entities;
 
 namespace StoreManagementMVC.Models
 {

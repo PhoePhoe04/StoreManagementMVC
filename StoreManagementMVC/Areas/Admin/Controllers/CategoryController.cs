@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using StoreManagementMVC.Data;
-using Store.Shared;
+using Store.Shared.Entities;
 
 namespace StoreManagementMVC.Areas.Admin.Controllers
 {
@@ -35,15 +35,29 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
 
         // POST: Upsert
         [HttpPost]
+        [HttpPost]
         public IActionResult Upsert(Category category)
         {
-            if(category.CategoryId == 0)
-                _context.Categories.Add(category);
-            else
-                _context.Categories.Remove(category);
+            // Kiểm tra dữ liệu hợp lệ 
+            if (ModelState.IsValid)
+            {
+                if (category.CategoryId == 0)
+                {
+                    // Thêm mới
+                    _context.Categories.Add(category);
+                }
+                else
+                {
+                    // Cập nhật
+                    _context.Categories.Update(category);
+                }
 
-            _context.SaveChanges();
-            return Json(new { success = true });
+                _context.SaveChanges();
+                return Json(new { success = true });
+            }
+
+            // Trả về lỗi nếu dữ liệu không hợp lệ
+            return Json(new { success = false, message = "Dữ liệu nhập vào không hợp lệ!" });
         }
 
         // POST: Delete

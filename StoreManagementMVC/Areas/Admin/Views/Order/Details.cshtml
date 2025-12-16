@@ -1,10 +1,13 @@
-﻿@model Order
+﻿@using Store.Shared.Entities
+@model Order
 @{
     ViewData["Title"] = "Chi tiết đơn hàng #" + Model.OrderId;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <a href="/Order" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
+    <a asp-area="Admin" asp-controller="Order" asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>Quay lại
+    </a>
     <div>
         @if (Model.Status == "pending")
         {
@@ -106,7 +109,8 @@
                 cancelButtonText: 'Không'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    $.post('/Order/UpdateStatus', { id: id, status: newStatus }, function (res) {
+                    let url = '@Url.Action("UpdateStatus", "Order", new { area = "Admin" })';
+                    $.post(url, { id: id, status: newStatus }, function (res) {
                         if (res.success) {
                             Swal.fire('Thành công', '', 'success').then(() => location.reload());
                         } else {

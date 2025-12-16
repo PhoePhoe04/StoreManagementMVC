@@ -1,0 +1,188 @@
+﻿@page "/checkout"
+@using Store.Shared.DTOs
+@using Store.Shared.Entities
+@using StoreClient.Services
+
+@inject CartService CartService
+@inject ToastService ToastService
+@inject NavigationManager NavManager
+@inject HttpClient Http
+
+<PageTitle>Thanh toán</PageTitle>
+
+<div class="container mt-4">
+    <h3 class="fw-bold mb-4">Thông tin thanh toán</h3>
+
+    <div class="row">
+        <div class="col-md-7">
+            <div class="card border-0 shadow-sm p-4">
+                <EditForm Model="orderDto" OnValidSubmit="HandleCheckout">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label">Họ và tên</label>
+                        <InputText class="form-control" @bind-Value="orderDto.CustomerName" placeholder="Nguyễn Văn A" />
+                        <ValidationMessage For="@(() => orderDto.CustomerName)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Số điện thoại</label>
+                        <InputText class="form-control" @bind-Value="orderDto.PhoneNumber" placeholder="09xxxxxxx" />
+                        <ValidationMessage For="@(() => orderDto.PhoneNumber)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Địa chỉ giao hàng</label>
+                        <InputTextArea class="form-control" @bind-Value="orderDto.Address" rows="3" placeholder="Số nhà, đường, phường..." />
+                        <ValidationMessage For="@(() => orderDto.Address)" />
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 py-2 mt-3 fw-bold" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span> <span>Đang xử lý...</span>
+                        }
+                        else
+                        {
+                            <span>XÁC NHẬN ĐẶT HÀNG</span>
+                        }
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">Đơn hàng của bạn</h5>
+                    <ul class="list-group list-group-flush mb-3">
+                        @foreach (var item in CartService.GetCartItems())
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent px-0">
+                                <div>
+                                    <h6 class="my-0">@item.ProductName</h6>
+                                    <small class="text-muted">SL: @item.Quantity</small>
+                                </div>
+                                <span class="text-muted">@((item.Price * item.Quantity).ToString("N0")) ₫</span>
+                            </li>
+                        }
+                    </ul>
+
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="Nhập mã giảm giá" @bind="promoCodeInput">
+                        <button class="btn btn-outline-secondary" type="button" @onclick="ApplyPromo">Áp dụng</button>
+                    </div>
+                    @if (!string.IsNullOrEmpty(promoMessage))
+                    {
+                        <div class="alert @(isPromoValid ? "alert-success" : "alert-danger") py-1 small mb-3">
+                            @promoMessage
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Tạm tính:</span>
+                        <span class="fw-bold">@SubTotal.ToString("N0") ₫</span>
+                    </div>
+
+                    @if (discountAmount > 0)
+                    {
+                        <div class="d-flex justify-content-between mb-2 text-success">
+                            <span>Giảm giá:</span>
+                            <span>-@discountAmount.ToString("N0") ₫</span>
+                        </div>
+                    }
+                    <hr>
+                    <div class="d-flex justify-content-between mb-4 fs-5 fw-bold">
+                        <span>Tổng cộng:</span>
+                        <span class="text-danger">@((SubTotal - discountAmount).ToString("N0")) ₫</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private OrderCreateDTO orderDto = new();
+    private bool isProcessing = false;
+
+    // --- LOGIC MÃ GIẢM GIÁ ---
+    private string promoCodeInput = "";
+    private decimal discountAmount = 0;
+    private string promoMessage = "";
+    private bool isPromoValid = false;
+
+    // Tính tạm tính
+    private decimal SubTotal => CartService.GetCartItems().Sum(x => x.Price * x.Quantity);
+
+    protected override void OnInitialized()
+    {
+        // Nếu giỏ hàng trống thì đá về trang chủ
+        if (CartService.GetCartItems().Count == 0)
+        {
+            NavManager.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleCheckout()
+    {
+        isProcessing = true; // Hiện loading
+
+        var success = await CartService.Checkout(orderDto);
+
+        if (success)
+        {
+            ToastService.ShowToast("Đặt hàng thành công!", ToastLevel.Success);
+            NavManager.NavigateTo("/order-success"); // Chuyển sang trang cảm ơn
+        }
+        else
+        {
+            ToastService.ShowToast("Đặt hàng thất bại. Vui lòng kiểm tra lại!", ToastLevel.Error);
+        }
+
+        isProcessing = false;
+    }
+
+    private async Task ApplyPromo()
+    {
+        if (string.IsNullOrWhiteSpace(promoCodeInput)) return;
+
+        try
+        {
+            // URL khớp với API: api/PromotionApi/Check?code=...&total=...
+            var url = $"api/PromotionApi/Check?code={promoCodeInput}&total={SubTotal}";
+
+            var response = await Http.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Đọc kết quả bằng DTO vừa tạo
+                var result = await response.Content.ReadFromJsonAsync<PromoCheckResponse>();
+
+                if (result != null && result.Success)
+                {
+                    discountAmount = result.DiscountAmount; // Lấy số tiền API đã tính
+                    orderDto.PromoId = result.PromoId;      // Lưu ID để gửi đi đặt hàng
+
+                    isPromoValid = true;
+                    promoMessage = $"Áp dụng thành công! Bạn được giảm {discountAmount:N0}đ";
+                }
+            }
+            else
+            {
+                // Vì API trả về string trần (BadRequest("Lỗi")), ta đọc ReadAsStringAsync
+                var errorMsg = await response.Content.ReadAsStringAsync();
+
+                promoMessage = errorMsg; // Mã đã hết lượt sử dụng
+                isPromoValid = false;
+                discountAmount = 0;
+                orderDto.PromoId = null;
+            }
+        }
+        catch
+        {
+            promoMessage = "Lỗi kết nối kiểm tra mã.";
+            isPromoValid = false;
+        }
+    }
+}

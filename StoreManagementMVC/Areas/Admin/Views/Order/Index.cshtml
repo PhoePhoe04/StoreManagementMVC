@@ -1,4 +1,5 @@
-﻿@model List<Order>
+﻿@using Store.Shared.Entities
+@model List<Order>
 @{
     ViewData["Title"] = "Quản lý Đơn hàng";
     int currentPage = ViewBag.CurrentPage ?? 1;
@@ -14,7 +15,7 @@
             <input type="text" name="search" value="@search" class="form-control me-2" placeholder="Mã đơn hoặc Tên khách..." style="width: 250px;">
             <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
         </form>
-        <a href="/Order/Create" class="btn btn-success shadow-sm">
+        <a asp-area="Admin" asp-controller="Order" asp-action="Create" class="btn btn-success shadow-sm">
             <i class="bi bi-cart-plus me-1"></i> Tạo đơn mới
         </a>
     </div>
@@ -59,7 +60,10 @@
                             }
                         </td>
                         <td class="text-center">
-                            <a href="/Order/Details/@item.OrderId" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Xem</a>
+                            <a asp-area="Admin" asp-controller="Order" asp-action="Details" asp-route-id="@item.OrderId"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Xem
+                            </a>
                         </td>
                     </tr>
                 }

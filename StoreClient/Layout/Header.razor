@@ -1,0 +1,135 @@
+﻿@inject NavigationManager NavManager
+@inject HttpClient Http
+@inject CartService CartService
+
+@implements IDisposable
+
+<nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+    <div class="container">
+        <a class="navbar-brand" href="/">
+            <i class="bi bi-bag-heart-fill me-2"></i>MyStore
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-bold">
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Trang chủ</NavLink>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" role="button" @onclick="ToggleDropdown">
+                        Danh mục
+                    </a>
+
+                    <ul class="dropdown-menu border-0 shadow @(showDropdown ? "show" : "")"
+                        style="@(showDropdown ? "display: block; position: absolute; inset: 0px auto auto 0px; margin: 0px; transform: translate(0px, 42px);" : "")">
+
+                        <li><a class="dropdown-item" href="products" @onclick="CloseDropdown">Tất cả sản phẩm</a></li>
+
+                        @if (categories != null)
+                        {
+                            <li><hr class="dropdown-divider"></li>
+                            @foreach (var cat in categories)
+                            {
+                                <li>
+                                    <a class="dropdown-item" href="/products?categoryId=@cat.CategoryId" @onclick="CloseDropdown">
+                                        @cat.CategoryName
+                                    </a>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </li>
+            </ul>
+
+            <form class="d-flex me-3" role="search" style="min-width: 300px;" @onsubmit="HandleSearch">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                    <input class="form-control border-start-0 bg-light"
+                           type="search"
+                           placeholder="Tìm sản phẩm..."
+                           @bind="keyword">
+                </div>
+            </form>
+
+            <div class="d-flex align-items-center gap-3">
+                <a href="cart" class="btn btn-outline-light text-dark position-relative border-0">
+                    <i class="bi bi-cart3 fs-4"></i>
+                    <span class="badge bg-danger cart-badge">@cartCount</span>
+                </a>
+
+                <a href="login" class="btn btn-primary btn-sm px-3 rounded-pill">Đăng nhập</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+@code {
+    private string? keyword;
+    private Category[]? categories; // Biến chứa danh sách danh mục
+
+    private int cartCount = 0;
+
+    private bool showDropdown = false;
+
+	// --- DROPDOWN CỦA DANH MỤC ---
+    private void ToggleDropdown()
+    {
+        showDropdown = !showDropdown; // Đảo trạng thái: Đang đóng thì mở, đang mở thì đóng
+    }
+
+    private void CloseDropdown()
+    {
+        showDropdown = false; // Bắt buộc đóng (dùng khi bấm vào link con)
+    }
+
+	// --- HÀM LOAD DATA CHO HEADER ---
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+			// Tăng số lượng sản phẩm trong giỏ khi có thay đổi
+            UpdateCartCount();
+            CartService.OnChange += UpdateCartCount;
+
+            // Gọi API lấy danh mục từ Backend
+            categories = await Http.GetFromJsonAsync<Category[]>("api/CategoryApi");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi tải danh mục: " + ex.Message);
+        }
+    }
+
+    // --- HÀM XỬ LÝ GIỎ HÀNG ---
+    private void UpdateCartCount()
+    {
+        // Tính tổng số lượng (VD: Mua 2 cái áo + 1 cái quần = 3)
+        cartCount = CartService.GetCartItems().Sum(x => x.Quantity);
+        StateHasChanged(); // Bắt buộc giao diện vẽ lại
+    }
+
+    // Hủy đăng ký khi tắt component (tránh rò rỉ bộ nhớ)
+    public void Dispose()
+    {
+        CartService.OnChange -= UpdateCartCount;
+    }
+
+
+	// --- HÀM XỬ LÝ TÌM KIẾM ---
+    private void HandleSearch()
+    {
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            NavManager.NavigateTo($"/products?search={keyword}");
+        }
+        else
+        {
+            NavManager.NavigateTo("/products");
+        }
+    }
+}
