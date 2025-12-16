@@ -69,7 +69,7 @@
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
         <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-clock-history me-2"></i>Đơn hàng mới nhất</h5>
-        <a href="/Order" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+        <a asp-area="Admin" asp-controller="Order" asp-action="Index" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
     </div>
     <div class="card-body p-0">
         <table class="table table-hover align-middle mb-0">
@@ -109,7 +109,7 @@
                             }
                         </td>
                         <td class="text-end pe-4">
-                            <a href="/Order/Details/@item.OrderId" class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i></a>
+                            <a asp-area="Admin" asp-controller="Order" asp-action="Details" asp-route-id="@item.OrderId" class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i></a>
                         </td>
                     </tr>
                 }

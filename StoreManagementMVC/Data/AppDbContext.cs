@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Store.Shared;
+using Store.Shared.Entities;
 
 namespace StoreManagementMVC.Data
 {

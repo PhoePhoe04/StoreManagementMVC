@@ -1,4 +1,5 @@
-﻿@model List<Supplier>
+﻿@using Store.Shared.Entities
+@model List<Supplier>
 
 @{
     ViewData["Title"] = "Quản lý Nhà cung cấp";
@@ -95,13 +96,16 @@
         function openModal(id = null) {
             $('#supplierModal').modal('show');
             $('#modalBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
-            let url = id ? `/Supplier/Upsert?id=${id}` : '/Supplier/Upsert';
+
+            let baseUrl = '@Url.Action("Upsert", "Supplier", new { area = "Admin" })';
+            let url = id ? `${baseUrl}?id=${id}` : baseUrl;
 
             $.get(url, function (data) {
                 $('#modalBody').html(data);
                 $('#upsertForm').submit(function (e) {
                     e.preventDefault();
-                    $.post('/Supplier/Upsert', $(this).serialize(), function (res) {
+                    let postUrl = '@Url.Action("Upsert", "Supplier", new { area = "Admin" })';
+                    $.post(postUrl, $(this).serialize(), function (res) {
                         if (res.success) {
                             $('#supplierModal').modal('hide');
                             Swal.fire({ icon: 'success', title: 'Thành công', timer: 1000, showConfirmButton: false }).then(() => location.reload());
@@ -119,7 +123,8 @@
                 showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    $.post('/Supplier/Delete', { id: id }, function (res) {
+                    let deleteUrl = '@Url.Action("Delete", "Supplier", new { area = "Admin" })';
+                    $.post(deleteUrl, { id: id }, function (res) {
                         if (res.success) Swal.fire('Đã xóa', '', 'success').then(() => location.reload());
                         else Swal.fire('Lỗi', res.message, 'error');
                     });

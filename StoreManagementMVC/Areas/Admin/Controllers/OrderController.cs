@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using StoreManagementMVC.Services;
 using StoreManagementMVC.Models;
-using Store.Shared;
+using Store.Shared.Entities;
 
 namespace StoreManagementMVC.Areas.Admin.Controllers
 {

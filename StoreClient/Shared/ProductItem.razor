@@ -1,0 +1,52 @@
+﻿@inject CartService CartService
+
+<div class="card h-100 border-0 shadow-hover product-card">
+    <div class="ratio ratio-4x3 position-relative overflow-hidden">
+        <img src="@($"https://picsum.photos/300?random={Product.ProductId}")"
+        class="card-img-top object-fit-cover @(Product.Quantity == 0 ? "opacity-50" : "")"
+        alt="@Product.ProductName">
+
+        @if (Product.Quantity == 0)
+        {
+            <div class="position-absolute top-50 start-50 translate-middle badge bg-danger fs-5">HẾT HÀNG</div>
+        }
+    </div>
+
+    <div class="card-body">
+        <h6 class="card-title text-truncate fw-bold mb-1">
+            <a href="/product/@Product.ProductId" class="text-decoration-none text-dark">@Product.ProductName</a>
+        </h6>
+        <p class="card-text text-danger fs-5 fw-bold mb-2">@Product.Price.ToString("N0") ₫</p>
+
+        <small class="text-muted d-block mb-2">@Product.CategoryName</small>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <small class="text-muted">Kho: <span class="fw-bold">@Product.Quantity</span></small>
+        </div>
+    </div>
+
+    <div class="card-footer bg-white border-0 pt-0 text-end">
+        @if (Product.Quantity > 0)
+        {
+            <button class="btn btn-primary btn-sm rounded-pill px-3" @onclick="AddToCart">
+                <i class="bi bi-cart-plus me-1"></i> Thêm
+            </button>
+        }
+        else
+        {
+            <button class="btn btn-outline-danger btn-sm rounded-pill px-3" disabled>Hết hàng</button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public ProductDTO Product { get; set; } = new(); 
+
+    private void AddToCart()
+    {
+        CartService.AddToCart(Product);
+
+        Console.WriteLine($"Đã thêm {Product.ProductName} vào giỏ!");
+    }
+}

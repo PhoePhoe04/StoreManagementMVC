@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Store.Shared
+namespace Store.Shared.Entities
 {
     [Table("orders")]
     public class Order

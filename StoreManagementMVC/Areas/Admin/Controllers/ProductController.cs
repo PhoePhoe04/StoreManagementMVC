@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Store.Shared;
+using Store.Shared.Entities;
 using StoreManagementMVC.Services;
 
 namespace StoreManagementMVC.Areas.Admin.Controllers

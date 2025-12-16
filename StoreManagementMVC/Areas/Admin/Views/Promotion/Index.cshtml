@@ -1,4 +1,5 @@
-﻿@model List<Promotion>
+﻿@using Store.Shared.Entities
+@model List<Promotion>
 @{
     ViewData["Title"] = "Quản lý Khuyến mãi";
     int currentPage = ViewBag.CurrentPage ?? 1;
@@ -113,13 +114,16 @@
         function openModal(id = null) {
             $('#promoModal').modal('show');
             $('#modalBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
-            let url = id ? `/Promotion/Upsert?id=${id}` : '/Promotion/Upsert';
+
+            let baseUrl = '@Url.Action("Upsert", "Promotion", new { area = "Admin" })';
+            let url = id ? `${baseUrl}?id=${id}` : baseUrl;
 
             $.get(url, function (data) {
                 $('#modalBody').html(data);
                 $('#upsertForm').submit(function (e) {
                     e.preventDefault();
-                    $.post('/Promotion/Upsert', $(this).serialize(), function (res) {
+                    let postUrl = '@Url.Action("Upsert", "Promotion", new { area = "Admin" })';
+                    $.post(postUrl, $(this).serialize(), function (res) {
                         if (res.success) {
                             $('#promoModal').modal('hide');
                             Swal.fire({ icon: 'success', title: 'Thành công', timer: 1000, showConfirmButton: false }).then(() => location.reload());
@@ -128,6 +132,8 @@
                         }
                     });
                 });
+            }).fail(function() {
+                $('#modalBody').html('<div class="text-center text-danger">Lỗi tải dữ liệu</div>');
             });
         }
 
@@ -137,7 +143,8 @@
                 showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    $.post('/Promotion/Delete', { id: id }, function (res) {
+                    let deleteUrl = '@Url.Action("Delete", "Promotion", new { area = "Admin" })';
+                    $.post(deleteUrl, { id: id }, function (res) {
                         if (res.success) Swal.fire('Đã xóa', '', 'success').then(() => location.reload());
                         else Swal.fire('Lỗi', res.message, 'error');
                     });

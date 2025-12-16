@@ -1,4 +1,5 @@
-﻿@model List<Customer>
+﻿@using Store.Shared.Entities
+@model List<Customer>
 @{
     ViewData["Title"] = "Quản lý khách hàng";
     int currentPage = ViewBag.CurrentPage ?? 1;
@@ -93,19 +94,29 @@
         function openModal(id = null) {
             $('#customerModal').modal('show');
             $('#modalBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
-            let url = id ? `/Customer/Upsert?id=${id}` : '/Customer/Upsert';
+            let url = id
+                ? '@Url.Action("Upsert", "Customer", new { area = "Admin" })?id=' + id
+                : '@Url.Action("Upsert", "Customer", new { area = "Admin" })';
 
             $.get(url, function (data) {
                 $('#modalBody').html(data);
                 $('#upsertForm').submit(function (e) {
                     e.preventDefault();
-                    $.post('/Customer/Upsert', $(this).serialize(), function (res) {
+                    let postUrl = '@Url.Action("Upsert", "Customer", new { area = "Admin" })';
+                    $.post(postUrl, $(this).serialize(), function (res) {
                         if (res.success) {
                             $('#customerModal').modal('hide');
-                            Swal.fire({ icon: 'success', title: 'Thành công', timer: 1000, showConfirmButton: false }).then(() => location.reload());
+                            Swal.fire({ 
+                                icon: 'success', 
+                                title: 'Thành công', 
+                                timer: 1000, 
+                                showConfirmButton: false 
+                            }).then(() => location.reload());
                         } else {
                             Swal.fire('Lỗi', res.message, 'error');
                         }
+                    }).fail(function() {
+                        Swal.fire('Lỗi', 'Không thể kết nối đến server', 'error');
                     });
                 });
             });
@@ -113,13 +124,21 @@
 
         function deleteCustomer(id) {
             Swal.fire({
-                title: 'Xóa khách hàng?', text: "Hành động này không thể hoàn tác!", icon: 'warning',
-                showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy'
+                title: 'Xóa khách hàng?', 
+                text: "Hành động này không thể hoàn tác!", 
+                icon: 'warning',
+                showCancelButton: true, 
+                confirmButtonText: 'Xóa', 
+                cancelButtonText: 'Hủy'
             }).then((result) => {
+                let deleteUrl = '@Url.Action("Delete", "Customer", new { area = "Admin" })';
                 if (result.isConfirmed) {
-                    $.post('/Customer/Delete', { id: id }, function (res) {
-                        if (res.success) Swal.fire('Đã xóa', '', 'success').then(() => location.reload());
-                        else Swal.fire('Lỗi', res.message, 'error');
+                    $.post(deleteUrl, { id: id }, function (res) {
+                        if (res.success) {
+                            Swal.fire('Đã xóa', '', 'success').then(() => location.reload());
+                        } else {
+                            Swal.fire('Lỗi', res.message || 'Không thể xóa', 'error');
+                        }
                     });
                 }
             })

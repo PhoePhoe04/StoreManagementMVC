@@ -1,4 +1,5 @@
-﻿@using StoreManagementMVC.Models
+﻿@using Store.Shared.Entities
+@using StoreManagementMVC.Models
 @{
     ViewData["Title"] = "Tạo đơn hàng mới";
     var customers = ViewBag.Customers as List<Customer>;
@@ -138,27 +139,38 @@
         let currentPromoId = null;
 
         $(document).ready(function () {
-            // --- LOGIC TÌM KIẾM (GIỮ NGUYÊN) ---
+            // --- LOGIC TÌM KIẾM ---
             $("#productSearch").on("input", function () {
                 var keyword = $(this).val();
                 clearTimeout(typingTimer);
                 $("#searchResult").hide();
+
                 if (keyword.length < 1) return;
 
+                // Tạo hiệu ứng Loading nhẹ
+                $("#searchResult").html('<div class="p-2 text-muted">Đang tìm...</div>').show();
+
                 typingTimer = setTimeout(function () {
+                    let searchUrl = '@Url.Action("SearchProduct", "Order", new { area = "Admin" })';
                     $.ajax({
-                        url: "/Order/SearchProduct",
+                        url: searchUrl,
                         data: { term: keyword },
                         success: function (data) { renderSearchResults(data); },
                         error: function () { console.error("Lỗi tìm kiếm"); }
                     });
-                }, 300);
+                }, 400);
             });
 
+            // Ẩn kết quả tìm kiếm khi click ra ngoài
             $(document).on("click", function (e) {
                 if (!$(e.target).closest("#productSearch, #searchResult").length) {
                     $("#searchResult").hide();
                 }
+            });
+
+            // Sự kiện khi thay đổi mã giảm giá 
+            $('#promoCode').on('change', function() {
+                 renderCart(); // Gọi lại renderCart để trigger check mã
             });
         });
 
@@ -170,13 +182,22 @@
                 $box.html('<div class="p-3 text-muted text-center">Không tìm thấy sản phẩm</div>');
             } else {
                 products.forEach(p => {
+                    // Format tiền Việt Nam
+                    // let priceFormatted = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.price);
+
+                    // var html = `
+                    //     <div class="search-item d-flex justify-content-between align-items-center"
+                    //          style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;"
+                    //          onclick="selectProduct(${p.id}, '${p.name.replace(/'/g, "\\'")}', ${p.price})">
+                    //         <span class="fw-bold">${p.name}</span>
+                    //         <span class="text-success">${priceFormatted}</span>
+                    //     </div>`;
                     var html = `
                         <div class="search-item d-flex justify-content-between align-items-center"
                              style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;"
-                             data-id="${p.id}" data-name="${p.name}" data-price="${p.price}"
-                             onclick="selectProductFromDiv(this)">
+                             onclick="selectProduct(${p.id}, '${p.name.replace(/'/g, "\\'")}', ${p.price})">
                             <span class="fw-bold">${p.name}</span>
-                            <span class="text-success">${p.price.toLocaleString('vi-VN')} ₫</span>
+                            <span class="text-success">${priceFormatted}</span>
                         </div>`;
                     $box.append(html);
                 });
@@ -223,7 +244,7 @@
             }
         }
 
-        // --- HÀM VẼ GIỎ HÀNG (SỬA LOGIC GỌI PROMOTION) ---
+        // --- HÀM VẼ GIỎ HÀNG ---
         function renderCart() {
             let tbody = $('#cartTable tbody');
             tbody.empty();
@@ -251,7 +272,6 @@
                 tbody.append(row);
             });
 
-            // LOGIC QUAN TRỌNG:
             // Nếu đang có mã giảm giá thì kiểm tra lại mã đó với tổng tiền mới
             // Nếu không có mã thì tính tổng bình thường
             if ($('#promoCode').val().trim() !== "") {
@@ -262,24 +282,21 @@
             }
         }
 
-        // --- HÀM ÁP DỤNG KHUYẾN MÃI (SỬA LỖI COMMENT CODE) ---
+        // --- HÀM ÁP DỤNG KHUYẾN MÃI ---
         function applyPromotion() {
             let code = $('#promoCode').val();
             let subtotal = 0;
             cart.forEach(item => subtotal += item.price * item.quantity);
 
             if (subtotal === 0) return; // Không báo lỗi ở đây để tránh spam popup khi renderCart
-
+            let checkUrl = '@Url.Action("CheckPromotion", "Order", new { area = "Admin" })';
             $.ajax({
-                url: '/Order/CheckPromotion',
+                url: checkUrl,
                 data: { code: code, total: subtotal },
                 success: function (res) {
                     if (res.success) {
-                        // SỬA: Bỏ comment để cập nhật biến toàn cục
                         currentDiscount = res.discount;
                         currentPromoId = res.promoId;
-
-                        // Hiển thị thông báo nhỏ (Toast) hoặc chỉ cần tính lại tiền
                         // Swal.fire('Áp dụng mã thành công', '', 'success');
                     } else {
                         // Nếu mã không còn hợp lệ (VD: tổng tiền giảm xuống dưới mức tối thiểu)
@@ -293,7 +310,7 @@
             });
         }
 
-        // --- HÀM TÍNH TỔNG CUỐI (CHỈ HIỂN THỊ, KHÔNG GỌI NGƯỢC) ---
+        // --- HÀM TÍNH TỔNG CUỐI ---
         function calculateTotal(subtotal) {
             let finalTotal = subtotal - currentDiscount;
             if (finalTotal < 0) finalTotal = 0;
@@ -328,15 +345,24 @@
             let $btn = $("button[onclick='submitOrder()']");
             $btn.prop("disabled", true).text("Đang xử lý...");
 
+            let createUrl = '@Url.Action("Create", "Order", new { area = "Admin" })';
             $.ajax({
-                url: '/Order/Create',
+                url: createUrl,
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(orderData),
                 success: function (res) {
                     if (res.success) {
-                        Swal.fire('Thành công!', `Đơn #${res.orderId} đã tạo.`, 'success')
-                            .then(() => window.location.href = `/Order/Details/${res.orderId}`);
+                        Swal.fire({
+                            title: 'Thành công!',
+                            text: `Đơn hàng #${res.orderId} đã được tạo.`,
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            let detailsUrl = '@Url.Action("Details", "Order", new { area = "Admin" })/' + res.orderId;
+                            window.location.href = detailsUrl;
+                        });
                     } else {
                         Swal.fire('Lỗi', res.message, 'error');
                         $btn.prop("disabled", false).html('<i class="bi bi-cash-coin me-2"></i> THANH TOÁN');
