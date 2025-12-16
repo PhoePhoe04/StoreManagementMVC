@@ -21,10 +21,15 @@ namespace Store.Shared.Entities
         [Column("full_name")]
         public string? FullName { get; set; }
 
+        [Column("email")]
+        public string? Email { get; set; }
+
         [Column("role")]
         public string Role { get; set; } = "staff"; 
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public string? ResetToken { get; set; }
+        public DateTime? ResetExpiry { get; set; }
     }
 }

@@ -1,0 +1,112 @@
+﻿@page "/register"
+@inject HttpClient Http
+@inject NavigationManager Nav
+@layout AuthLayout
+@using Microsoft.AspNetCore.Components.Forms
+@using Store.Shared.Dtos
+
+<div class="vh-100 d-flex align-items-center" style="background-color: #f8f9fa;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-9">
+                <div class="card border-0 shadow" style="border-radius: 25px;">
+                    <div class="card-body p-4 p-md-5">
+                        <div class="row align-items-center">
+                            <div class="col-lg-5 text-center mb-4 mb-lg-0">
+                                <img src="https://img.freepik.com/free-vector/flat-people-order-food-online-grocery-shopping-from-mobile-application-internet-purchases-with-home-delivery-from-supermarket-store-smartphone-screen-with-buy-button-basket-full-products_88138-856.jpg"
+                                     class="img-fluid rounded" style="max-height: 400px;" alt="Shopping">
+                            </div>
+
+                            <div class="col-lg-7">
+                                <h1 class="h2 fw-bold text-center mb-4">Đăng ký tài khoản</h1>
+
+                                <EditForm Model="@model" OnValidSubmit="@HandleRegister">
+                                    <DataAnnotationsValidator />
+
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <div class="form-floating">
+                                                <InputText @bind-Value="model.Username" class="form-control" id="username" />
+                                                <label for="username">Username</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <div class="form-floating">
+                                                <InputText @bind-Value="model.Password" type="password" class="form-control" id="password" />
+                                                <label for="password">Mật khẩu</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <div class="form-floating">
+                                                <InputText @bind-Value="model.FullName" class="form-control" id="fullname" />
+                                                <label for="fullname">Họ tên</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="form-floating">
+                                                <InputText @bind-Value="model.Phone" class="form-control" id="phone" />
+                                                <label for="phone">Điện thoại</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="form-floating">
+                                                <InputText @bind-Value="model.Email" class="form-control" id="email" />
+                                                <label for="email">Email</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <div class="form-floating">
+                                                <InputText @bind-Value="model.Address" class="form-control" id="address" />
+                                                <label for="address">Địa chỉ</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12 text-center mt-4">
+                                            <button type="submit" class="btn btn-primary btn-lg px-5">Đăng ký</button>
+                                        </div>
+
+                                        <div class="col-12 text-center mt-3">
+                                            <span>Đã có tài khoản? </span>
+                                            <a href="/login" class="text-primary fw-bold">Đăng nhập</a>
+                                        </div>
+
+                                        @if (!string.IsNullOrEmpty(message))
+                                        {
+                                            <div class="col-12 text-center mt-3 fw-medium @(message.Contains("thành công") ? "text-success" : "text-danger")">
+                                                @message
+                                            </div>
+                                        }
+                                    </div>
+                                </EditForm>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterDto model = new();
+    private string message = "";
+
+    private async Task HandleRegister()
+    {
+        var response = await Http.PostAsJsonAsync("api/AuthApi/register", model);
+        if (response.IsSuccessStatusCode)
+        {
+            message = "Đăng ký thành công!";
+            Nav.NavigateTo("/login");
+        }
+        else
+        {
+            message = "Lỗi: " + await response.Content.ReadAsStringAsync();
+        }
+    }
+}
