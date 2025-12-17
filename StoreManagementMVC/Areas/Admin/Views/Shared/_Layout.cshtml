@@ -40,17 +40,25 @@
             </div>
             <ul class="nav nav-pills flex-column mb-auto mt-2">
                 <li>
-					<a asp-area="Admin" asp-controller="Home" asp-action="Index"
-                        class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
+                    <a asp-area="Admin" asp-controller="Home" asp-action="Index"
+                       class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
                         <i class="bi bi-speedometer2 me-2"></i> Tổng quan
                     </a>
                 </li>
 
                 @{
-                    // Logic kiểm tra để giữ menu mở khi đang chọn con bên trong
+                    // --- LOGIC XỬ LÝ TRẠNG THÁI MENU ---
                     var currentCtrl = ViewContext.RouteData.Values["controller"]?.ToString();
+
+                    // Logic cho Menu Kho
                     var isProductMenuOpen = currentCtrl == "Product" || currentCtrl == "Category";
+
+                    // Logic cho Menu Tài khoản
+                    // Lấy tham số 'type' từ URL để biết đang xem Nhân viên hay Khách hàng
+                    var currentType = Context.Request.Query["type"].ToString();
+                    var isUserMenuOpen = currentCtrl == "User";
                 }
+
                 <li>
                     <a href="#subMenuProduct" data-bs-toggle="collapse"
                        class="d-flex justify-content-between align-items-center @(isProductMenuOpen ? "active" : "")"
@@ -63,54 +71,77 @@
                         <ul class="nav flex-column" style="background-color: rgba(0,0,0,0.2);">
                             <li>
                                 <a asp-area="Admin" asp-controller="Category" asp-action="Index"
-                                    class="ps-5 py-2 @(currentCtrl == "Category" ? "text-warning fw-bold" : "")" style="font-size: 0.95rem;">
+                                   class="ps-5 py-2 @(currentCtrl == "Category" ? "text-warning fw-bold" : "")" style="font-size: 0.95rem;">
                                     <i class="bi bi-tags me-2"></i> Danh mục
                                 </a>
                             </li>
-
                             <li>
-                                <a  asp-area="Admin" asp-controller="Product" asp-action="Index"
-                                    class="ps-5 py-2 @(currentCtrl == "Product" ? "text-warning fw-bold" : "")" style="font-size: 0.95rem;">
+                                <a asp-area="Admin" asp-controller="Product" asp-action="Index"
+                                   class="ps-5 py-2 @(currentCtrl == "Product" ? "text-warning fw-bold" : "")" style="font-size: 0.95rem;">
                                     <i class="bi bi-list-ul me-2"></i> Sản phẩm
                                 </a>
                             </li>
                         </ul>
                     </div>
                 </li>
+
                 <li>
                     <a asp-area="Admin" asp-controller="Supplier" asp-action="Index"
-                        class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Supplier" ? "active" : "")">
+                       class="@(currentCtrl == "Supplier" ? "active" : "")">
                         <i class="bi bi-truck me-2"></i> Nhà cung cấp
                     </a>
                 </li>
                 <li>
                     <a asp-area="Admin" asp-controller="Promotion" asp-action="Index"
-                        class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Promotion" ? "active" : "")">
+                       class="@(currentCtrl == "Promotion" ? "active" : "")">
                         <i class="bi bi-ticket-perforated me-2"></i> Khuyến mãi
                     </a>
                 </li>
                 <li>
                     <a asp-area="Admin" asp-controller="Order" asp-action="Index"
-                        class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Order" ? "active" : "")">
+                       class="@(currentCtrl == "Order" ? "active" : "")">
                         <i class="bi bi-cart me-2"></i> Đơn hàng
                     </a>
                 </li>
                 <li>
                     <a asp-area="Admin" asp-controller="Payment" asp-action="Index"
-                        class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Payment" ? "active" : "")">
+                       class="@(currentCtrl == "Payment" ? "active" : "")">
                         <i class="bi bi-wallet2 me-2"></i> Thanh toán
                     </a>
                 </li>
                 <li>
                     <a asp-area="Admin" asp-controller="Customer" asp-action="Index"
-                        class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Customer" ? "active" : "")">
+                       class="@(currentCtrl == "Customer" ? "active" : "")">
                         <i class="bi bi-people me-2"></i> Khách hàng
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link text-white" asp-area="Admin" asp-controller="User" asp-action="Index">
-                        <i class="bi bi-people me-2"></i> Quản lý Nhân viên
+
+                <li>
+                    <a href="#subMenuUser" data-bs-toggle="collapse"
+                       class="d-flex justify-content-between align-items-center @(isUserMenuOpen ? "active" : "")"
+                       aria-expanded="@(isUserMenuOpen ? "true" : "false")">
+                        <span><i class="bi bi-person-badge me-2"></i> Tài khoản</span>
+                        <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
                     </a>
+
+                    <div class="collapse @(isUserMenuOpen ? "show" : "")" id="subMenuUser">
+                        <ul class="nav flex-column" style="background-color: rgba(0,0,0,0.2);">
+                            <li>
+                                <a asp-area="Admin" asp-controller="User" asp-action="Index" asp-route-type="employee"
+                                   class="ps-5 py-2 @(currentCtrl == "User" && (string.IsNullOrEmpty(currentType) || currentType == "employee") ? "text-warning fw-bold" : "")"
+                                   style="font-size: 0.95rem;">
+                                    <i class="bi bi-person-workspace me-2"></i> Nhân viên
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-area="Admin" asp-controller="User" asp-action="Index" asp-route-type="customer"
+                                   class="ps-5 py-2 @(currentCtrl == "User" && currentType == "customer" ? "text-warning fw-bold" : "")"
+                                   style="font-size: 0.95rem;">
+                                    <i class="bi bi-person me-2"></i> Khách hàng (User)
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </li>
             </ul>
         </div>

@@ -1,90 +1,90 @@
-﻿using System.Net.Http.Json;
+﻿using Microsoft.JSInterop;
+using System.Text.Json;
 using Store.Shared.DTOs;
 
 namespace StoreClient.Services
 {
     public class CartService
     {
-        // Danh sách chứa các món hàng
-        private List<CartItem> cart = new List<CartItem>();
+        private readonly IJSRuntime _js;
+        // Event để báo cho Navbar cập nhật số lượng (nếu có)
+        public event Action OnChange;
 
-        // Sự kiện để báo cho các Component khác biết giỏ hàng đã thay đổi
-        public event Action? OnChange;
-
-        // Inject ToastService
-        private readonly ToastService _toastService;
-
-        private readonly HttpClient _http;
-
-        public CartService(ToastService toastService, HttpClient http)
+        public CartService(IJSRuntime js)
         {
-            _toastService = toastService;
-            _http = http;
+            _js = js;
         }
 
-        // Hàm thêm vào giỏ
-        public void AddToCart(ProductDTO product)
+        public async Task AddToCart(CartItemDTO item)
         {
-            var item = cart.FirstOrDefault(x => x.ProductId == product.ProductId);
-            if (item == null)
+            // 1. Lấy giỏ hàng cũ ra
+            var cart = await GetCartItems();
+
+            // 2. Kiểm tra xem sản phẩm đã có chưa
+            var existingItem = cart.FirstOrDefault(x => x.ProductId == item.ProductId);
+            if (existingItem != null)
             {
-                cart.Add(new CartItem
-                {
-                    ProductId = product.ProductId,
-                    ProductName = product.ProductName,
-                    Price = product.Price,
-                    StockQuantity = product.Quantity,
-                    Quantity = 1
-                });
+                // Có rồi thì cộng dồn số lượng
+                existingItem.Quantity += item.Quantity;
             }
             else
             {
-                // Nếu có rồi thì tăng số lượng (nhưng không quá tồn kho)
-                if (item.Quantity < item.StockQuantity)
-                {
-                    item.Quantity++;
-                }
+                // Chưa có thì thêm mới
+                cart.Add(item);
             }
 
-            NotifyStateChanged();
-            _toastService.ShowToast($"Đã thêm {product.ProductName} vào giỏ hàng", ToastLevel.Success);
+            // 3. Lưu lại vào LocalStorage (Phải chuyển sang chuỗi JSON)
+            var json = JsonSerializer.Serialize(cart);
+            await _js.InvokeVoidAsync("localStorage.setItem", "cart", json);
+
+            // 4. Báo hiệu thay đổi giao diện
+            OnChange?.Invoke();
         }
 
-        // Hàm xóa khỏi giỏ
-        public void DeleteItem(CartItem item)
+        public async Task<List<CartItemDTO>> GetCartItems()
         {
-            cart.Remove(item);
-            NotifyStateChanged();
-            _toastService.ShowToast($"Đã xóa {item.ProductName} khỏi giỏ hàng", ToastLevel.Error);
-        }
+            // Lấy chuỗi JSON từ LocalStorage
+            var json = await _js.InvokeAsync<string>("localStorage.getItem", "cart");
 
-        public List<CartItem> GetCartItems()
-        {
-            return cart;
-        }
-
-        private void NotifyStateChanged() => OnChange?.Invoke();
-
-
-        // Hàm thanh toán
-        public async Task<bool> Checkout(OrderCreateDTO orderDto)
-        {
-            // Gán danh sách giỏ hàng hiện tại vào DTO
-            orderDto.CartItems = cart;
-
-            var response = await _http.PostAsJsonAsync("api/OrderApi", orderDto);
-
-            if (response.IsSuccessStatusCode)
+            if (string.IsNullOrEmpty(json))
             {
-                // Nếu thành công: Xóa sạch giỏ hàng
-                cart.Clear();
-                NotifyStateChanged();
-                return true;
+                return new List<CartItemDTO>();
             }
-            else
+
+            try
             {
-                return false;
+                // Chuyển ngược từ JSON sang List
+                return JsonSerializer.Deserialize<List<CartItemDTO>>(json) ?? new List<CartItemDTO>();
             }
+            catch
+            {
+                return new List<CartItemDTO>();
+            }
+        }
+
+        public async Task DeleteItem(CartItemDTO item)
+        {
+            var cart = await GetCartItems();
+            var itemToRemove = cart.FirstOrDefault(x => x.ProductId == item.ProductId);
+            if (itemToRemove != null)
+            {
+                cart.Remove(itemToRemove);
+                await SaveCart(cart);
+            }
+        }
+
+        // Hàm lưu đè danh sách (Dùng khi tăng giảm số lượng)
+        public async Task SaveCart(List<CartItemDTO> cart)
+        {
+            var json = JsonSerializer.Serialize(cart);
+            await _js.InvokeVoidAsync("localStorage.setItem", "cart", json);
+            OnChange?.Invoke(); // Báo UI vẽ lại
+        }
+
+        public async Task ClearCart()
+        {
+            await _js.InvokeVoidAsync("localStorage.removeItem", "cart");
+            OnChange?.Invoke();
         }
     }
 }

@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Store.Shared;
@@ -9,8 +12,10 @@ using StoreManagementMVC.Data;
 
 namespace StoreManagementMVC.Controllers.Api
 {
-    [Route("api/[controller]")]
+    //[Route("api/[controller]")]
+    [Route("api/order")]
     [ApiController]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class OrderApiController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -20,132 +25,162 @@ namespace StoreManagementMVC.Controllers.Api
             _context = context;
         }
 
-        // POST: api/OrderApi
-        [HttpPost]
-        public async Task<IActionResult> CreateOrder([FromBody] OrderCreateDTO orderDto)
+        // GET: api/order/my-orders
+        [HttpGet("my-orders")]
+        public async Task<IActionResult> GetMyOrders()
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            // Lấy UserId
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+            int userId = int.Parse(userIdClaim.Value);
 
+            // Tìm CustomerId trước
+            var customer = await _context.Customers
+                                .Select(c => new { c.CustomerId, c.UserId })
+                                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (customer == null) return Ok(new List<object>()); // Chưa mua hàng bao giờ
+
+            // Lấy danh sách đơn hàng của Customer đó
+            // (Giả sử bạn có bảng Orders liên kết với CustomerId)
+            var orders = await _context.Orders
+                .Where(o => o.CustomerId == customer.CustomerId)
+                .OrderByDescending(o => o.OrderDate) // Đơn mới nhất lên đầu
+                .ToListAsync();
+
+            return Ok(orders);
+        }
+
+
+        // POST: api/order/create
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
+        {
+            // 1. Lấy UserId từ Token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+            int userId = int.Parse(userIdClaim.Value);
+
+            // 2. Tìm Customer
+            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (customer == null)
+                return BadRequest("Bạn cần cập nhật thông tin cá nhân (Profile) trước khi đặt hàng.");
+
+            if (request.CartItems == null || request.CartItems.Count == 0)
+                return BadRequest("Giỏ hàng trống.");
+
+            // 3. TRANSACTION (Đảm bảo toàn vẹn dữ liệu)
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // --- TẠO KHÁCH HÀNG ---
-                // Ánh xạ từ DTO 
-                var customer = new Customer
+                // 3.1. Tính tổng tiền hàng (Subtotal)
+                decimal subtotal = request.CartItems.Sum(x => x.Price * x.Quantity);
+                decimal discountAmount = 0;
+
+                // 3.2. Xử lý Mã giảm giá
+                int? appliedPromoId = null;
+                if (!string.IsNullOrEmpty(request.PromotionCode))
                 {
-                    Name = orderDto.CustomerName,   
-                    Phone = orderDto.PhoneNumber,  
-                    Address = orderDto.Address,     
-                    Email = null,                   // Form hiện tại chưa có nhập Email nên để null
-                    CreatedAt = DateTime.Now
-                };
-
-                _context.Customers.Add(customer);
-                await _context.SaveChangesAsync(); // Lưu ngay để SQL sinh ra CustomerId
-
-                // --- TẠO ĐƠN HÀNG ---
-                var order = new Order
-                {
-                    CustomerId = customer.CustomerId, // Lấy ID của khách vừa tạo
-                    OrderDate = DateTime.Now,
-                    Status = "pending", // Trạng thái mặc định: Chờ xử lý
-                    UserId = null,      // Khách vãng lai
-
-                    DiscountAmount = 0,
-                    PromoId = null,
-                    TotalAmount = 0 // Tính tổng tiền tạm tính
-                };
-
-                _context.Orders.Add(order);
-                await _context.SaveChangesAsync(); // Lưu ngay để lấy OrderId
-
-                // --- XỬ LÝ CHI TIẾT & TRỪ KHO ---
-                decimal calculatedTotal = 0; // Biến dùng để cộng dồn tổng tiền hàng
-
-                foreach (var item in orderDto.CartItems)
-                {
-                    // Tính toán giá trị
-                    decimal lineTotal = item.Price * item.Quantity;
-                    calculatedTotal += lineTotal;
-
-                    // Tạo OrderItem
-                    var orderItem = new OrderItem
+                    var today = DateTime.Now;
+                    var promo = await _context.Promotions
+                        .FirstOrDefaultAsync(p => p.PromoCode == request.PromotionCode && p.Status == "active");
+                    
+                    // Validate kỹ lại lần nữa ở Server (Trust no one)
+                    if (promo != null)
                     {
-                        OrderId = order.OrderId, // Link về Order ở trên
-                        ProductId = item.ProductId,
-                        Quantity = item.Quantity,
-                        Price = item.Price,
-                        Subtotal = lineTotal // Lưu thành tiền của dòng này
-                    };
-                    _context.OrderItems.Add(orderItem);
+                        // Check hạn dùng
+                        if (today < promo.StartDate || today > promo.EndDate)
+                            throw new Exception("Mã giảm giá đã hết hạn.");
 
-                    // Trừ kho
-                    var inventory = _context.Inventories.FirstOrDefault(i => i.ProductId == item.ProductId);
-                    if (inventory == null)
-                    {
-                        throw new Exception($"Sản phẩm ID {item.ProductId} không tồn tại trong kho!");
-                    }
-                    if (inventory.Quantity < item.Quantity)
-                    {
-                        throw new Exception($"Sản phẩm {item.ProductName} không đủ hàng (Còn: {inventory.Quantity})!");
-                    }
-
-                    inventory.Quantity -= item.Quantity; // Trừ số lượng thực tế
-                    // Tùy chọn: update cả inventory.UpdatedAt = DateTime.Now 
-                }
-                // --- XỬ LÝ MÃ GIẢM GIÁ ---
-                if (orderDto.PromoId.HasValue)
-                {
-                    var promo = await _context.Promotions.FindAsync(orderDto.PromoId.Value);
-                    if (promo != null
-                && promo.Status == "active"
-                && DateTime.Now >= promo.StartDate
-                && DateTime.Now <= promo.EndDate
-                && calculatedTotal >= promo.MinOrderAmount)
-                    {
-                        // Check lượt dùng 
+                        // Check số lượng
                         if (promo.UsageLimit > 0 && promo.UsedCount >= promo.UsageLimit)
-                        {
-                            throw new Exception("Mã giảm giá đã hết lượt sử dụng!");
-                        }
+                            throw new Exception("Mã giảm giá đã hết lượt dùng.");
 
-                        // Tính toán số tiền được giảm
-                        decimal discountAmt = 0;
+                        // Check đơn tối thiểu
+                        if (subtotal < promo.MinOrderAmount)
+                            throw new Exception($"Đơn hàng chưa đạt tối thiểu {promo.MinOrderAmount:N0}đ để dùng mã này.");
+
+                        // TÍNH TOÁN SỐ TIỀN GIẢM
                         if (promo.DiscountType == "percent")
                         {
-                            discountAmt = calculatedTotal * (promo.DiscountValue / 100);
+                            discountAmount = subtotal * (promo.DiscountValue / 100);
                         }
                         else // "fixed"
                         {
-                            discountAmt = promo.DiscountValue;
+                            discountAmount = promo.DiscountValue;
                         }
 
-                        // Không giảm quá tổng tiền đơn hàng
-                        if (discountAmt > calculatedTotal) discountAmt = calculatedTotal;
+                        // Đảm bảo không giảm quá số tiền đơn hàng (tránh bị âm tiền)
+                        if (discountAmount > subtotal) discountAmount = subtotal;
 
-                        // Cập nhật vào Order
-                        order.PromoId = promo.PromoId;
-                        order.DiscountAmount = discountAmt;
-
-                        // Tăng số lượt đã dùng của mã này lên 1
-                        promo.UsedCount += 1;
+                        // Tăng số lượt đã dùng lên 1
+                        promo.UsedCount++;
+                        appliedPromoId = promo.PromoId;
                     }
                 }
 
-                // --- CHỐT TỔNG TIỀN VÀ LƯU ---
-                // Tổng tiền cuối = Tổng tiền hàng - Giảm giá
-                order.TotalAmount = calculatedTotal - order.DiscountAmount;
+                /// 3.3. Tạo Order
+                var order = new Order
+                {
+                    CustomerId = customer.CustomerId,
+                    OrderDate = DateTime.Now,
+                    Status = "Pending",
+                    // Lưu tổng tiền sau khi trừ
+                    TotalAmount = subtotal - discountAmount,
+                    DiscountAmount = discountAmount, // Lưu số tiền được giảm
+                    PromoId = appliedPromoId         // Lưu ID mã giảm giá (có thể null)
+                };
 
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync(); // Chốt giao dịch: Lưu tất cả xuống DB
+                _context.Orders.Add(order);
+                await _context.SaveChangesAsync(); // Lưu ngay để lấy OrderId (ví dụ: 105)
 
-                return Ok(new { OrderId = order.OrderId, Message = "Đặt hàng thành công!" });
+                // B. TẠO ORDER ITEMS (Bảng chi tiết con)
+                foreach (var item in request.CartItems)
+                {
+                    // Sử dụng Entity OrderItem của bạn
+                    var orderItem = new OrderItem
+                    {
+                        OrderId = order.OrderId,      // FK trỏ về đơn hàng vừa tạo
+                        ProductId = item.ProductId,   // FK trỏ về sản phẩm
+                        Quantity = item.Quantity,
+                        Price = item.Price,           // Giá tại thời điểm mua
+
+                        // Tính Subtotal (Thành tiền = Giá x Số lượng)
+                        Subtotal = item.Price * item.Quantity
+                    };
+
+                    // Lưu ý: Cần đảm bảo trong AppDbContext bạn đã khai báo DbSet<OrderItem>
+                    _context.OrderItems.Add(orderItem);
+
+                    // C. TRỪ TỒN KHO (Logic kiểm tra hàng tồn)
+                    var product = await _context.Products.FindAsync(item.ProductId);
+                    if (product != null)
+                    {
+                        // Kiểm tra null cho Inventory để tránh lỗi
+                        if (product.Inventory != null)
+                        {
+                            if (product.Inventory.Quantity >= item.Quantity)
+                            {
+                                product.Inventory.Quantity -= item.Quantity;
+                            }
+                            else
+                            {
+                                throw new Exception($"Sản phẩm {product.ProductName} không đủ số lượng tồn kho (Còn: {product.Inventory.Quantity}).");
+                            }
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync(); // Lưu tất cả OrderItem và cập nhật kho
+                await transaction.CommitAsync();   // Chốt giao dịch thành công
+
+                return Ok(new { orderId = order.OrderId, message = "Đặt hàng thành công!" });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync(); // Có lỗi thì hoàn tác, không lưu rác
-                return BadRequest(new { Message = ex.Message });
+                await transaction.RollbackAsync(); // Có lỗi thì hoàn tác hết
+                return StatusCode(500, "Lỗi đặt hàng: " + ex.Message);
             }
-
         }
 
         // GET: api/OrderApi/history/1

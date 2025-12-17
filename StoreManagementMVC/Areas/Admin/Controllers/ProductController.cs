@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using Store.Shared.Entities;
 using StoreManagementMVC.Services;
 
@@ -20,12 +19,16 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
         }
 
         // GET: /Product/Index
-        public IActionResult Index(int p = 1)
+        public IActionResult Index(int p = 1, string search = "")
         {
-            var result = _service.GetProductsPaging(p, 10);
+            // Gọi Service với tham số tìm kiếm
+            var result = _service.GetProductsPaging(p, 10, search);
 
             ViewBag.CurrentPage = p;
             ViewBag.TotalPages = (int)Math.Ceiling((double)result.totalCount / 10);
+
+            // Truyền lại từ khóa sang View
+            ViewBag.Search = search;
 
             return View(result.products);
         }
@@ -39,14 +42,14 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
 
             // Tạo SelectList để truyền sang View (dùng cho thẻ <select>)
             // Tham số: (List nguồn, "Tên cột giá trị lưu xuống DB", "Tên cột hiển thị lên Web")
-            ViewBag.CategoryList = new SelectList(categories, "CategoryId", "CategoryName");
-            ViewBag.SupplierList = new SelectList(suppliers, "SupplierId", "Name");
+            ViewBag.Categories = categories ?? new List<Category>();
+            ViewBag.Suppliers = suppliers ?? new List<Supplier>();
 
             // Trường hợp Thêm mới (id là null)
             if (id == null)
             {
                 // Trả về một Product rỗng để người dùng nhập mới
-                return PartialView("_Upsert", new Product());
+                return PartialView("_Upsert", new Product { Price = 0, Unit = "cái" });
             }
 
             // Trường hợp Cập nhật (id có giá trị)
@@ -70,16 +73,12 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
         }
 
         [HttpPost]
-        public IActionResult Upsert(Product product, IFormFile? file)
+        public IActionResult Upsert(Product product, IFormFile? file, int InitialStock = 0)
         {
-            // --- BƯỚC QUAN TRỌNG: SỬA LỖI TẠI ĐÂY ---
             // Loại bỏ ImageUrl khỏi danh sách kiểm tra lỗi
             // Vì lúc này chưa có ảnh, ta sẽ gán sau.
             ModelState.Remove("ImageUrl");
-
-            // Nếu Inventory là object navigation, đôi khi nó cũng gây lỗi validation
-            // Nếu bạn gặp lỗi liên quan đến Inventory, hãy uncomment dòng dưới:
-            // ModelState.Remove("Inventory"); 
+            ModelState.Remove("Inventory");
 
             // Kiểm tra tính hợp lệ
             if (!ModelState.IsValid)
@@ -141,6 +140,10 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
                 // Gọi Service để lưu dữ liệu
                 if (product.ProductId == 0)
                 {
+                    product.Inventory = new Inventory
+                    {
+                        Quantity = InitialStock
+                    };
                     _service.AddProduct(product);
                 }
                 else

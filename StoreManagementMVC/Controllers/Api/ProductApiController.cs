@@ -24,9 +24,9 @@ namespace StoreManagementMVC.Controllers.Api
         public async Task<ActionResult<ProductResult>> GetProducts(
             string? search, 
             int? categoryId,
-            decimal? minPrice, // 1. Giá thấp nhất
-            decimal? maxPrice, // 2. Giá cao nhất
-            string? sort,      // 3. Kiểu sắp xếp (asc/desc)
+            decimal? minPrice, // Giá thấp nhất
+            decimal? maxPrice, // Giá cao nhất
+            string? sort,      // Kiểu sắp xếp (asc/desc)
             int page = 1)
         {
             // Cố định sản phẩm mỗi trang
@@ -132,7 +132,6 @@ namespace StoreManagementMVC.Controllers.Api
                     p => p.ProductId,
                     i => i.ProductId,
                     (p, invGroup) => new { p, inv = invGroup.FirstOrDefault() })
-                // Sắp xếp ID giảm dần (Mới nhất)
                 .OrderByDescending(x => x.p.ProductId)
                 .Take(8) // Lấy 8 cái
                 .Select(x => new ProductDTO

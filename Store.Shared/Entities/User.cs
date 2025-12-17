@@ -25,7 +25,7 @@ namespace Store.Shared.Entities
         public string? Email { get; set; }
 
         [Column("role")]
-        public string Role { get; set; } = "staff"; 
+        public string Role { get; set; } = "customer"; 
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.Now;

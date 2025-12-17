@@ -32,6 +32,16 @@ namespace StoreClient.Services
             OnChange?.Invoke();
         }
 
+        public void ShowSuccess(string message)
+        {
+            ShowToast(message, ToastLevel.Success);
+        }
+
+        public void ShowError(string message)
+        {
+            ShowToast(message, ToastLevel.Error);
+        }
+
         private void StartTimer()
         {
             if (_countdown == null)

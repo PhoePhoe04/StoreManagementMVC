@@ -1,11 +1,17 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Store.Shared.Entities;
 using StoreManagementMVC.Data;
 
 namespace StoreManagementMVC.Controllers.Api
 {
-    [Route("api/[controller]")]
+    //[Route("api/[controller]")]
+    [Route("api/customer")]
     [ApiController]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class CustomerApiController : Controller
     {
         private readonly AppDbContext _context;
@@ -15,32 +21,46 @@ namespace StoreManagementMVC.Controllers.Api
             _context = context;
         }
 
-        // GET: api/CustomerApi/1
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetProfile(int id)
+        // GET: api/customer/profile
+        // Lấy thông tin khách hàng dựa trên Token đăng nhập
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile()
         {
-            var customer = await _context.Customers.FindAsync(id);
-            if (customer == null) return NotFound();
+            // 1. Lấy UserId từ Token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+
+            int userId = int.Parse(userIdClaim.Value);
+
+            // 2. Tìm Customer có UserId tương ứng
+            var customer = await _context.Customers
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (customer == null) return NotFound("Chưa tìm thấy thông tin khách hàng.");
+
             return Ok(customer);
         }
 
-        // PUT: api/CustomerApi/1
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProfile(int id, [FromBody] Customer customer)
+        // PUT: api/customer/profile
+        // Cập nhật thông tin
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile(Customer request)
         {
-            if (id != customer.CustomerId) return BadRequest();
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+            int userId = int.Parse(userIdClaim.Value);
 
-            var existing = await _context.Customers.FindAsync(id);
-            if (existing == null) return NotFound();
+            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (customer == null) return NotFound();
 
-            // Cập nhật thông tin
-            existing.Name = customer.Name;
-            existing.Phone = customer.Phone;
-            existing.Address = customer.Address;
-            existing.Email = customer.Email;
+            // Cập nhật các trường cho phép
+            customer.Name = request.Name;
+            customer.Phone = request.Phone;
+            customer.Address = request.Address;
+            // Không cho sửa Email nếu Email dùng để login/recovery
 
             await _context.SaveChangesAsync();
-            return Ok(new { success = true, message = "Cập nhật thành công!" });
+            return Ok(customer);
         }
     }
 }

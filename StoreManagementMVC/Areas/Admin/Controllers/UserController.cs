@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Store.Shared.Entities;
-using StoreManagementMVC.Data;
+using StoreManagementMVC.Services;
 
 namespace StoreManagementMVC.Areas.Admin.Controllers
 {
@@ -9,97 +9,106 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
     [Route("Admin/[controller]/[action]")]
     public class UserController : AdminBaseController
     {
-        private readonly AppDbContext _context;
+        private readonly UserService _service;
 
-        public UserController(AppDbContext context)
+        public UserController(UserService service)
         {
-            _context = context;
+            _service = service;
         }
 
-        // Danh sách nhân viên
-        public IActionResult Index()
+        // Danh sách (Có hỗ trợ type: employee/customer)
+        public IActionResult Index(int p = 1, string search = "", string type = "employee")
         {
-            var users = _context.Users.OrderByDescending(u => u.CreatedAt).ToList();
-            return View(users);
+            try
+            {
+                var result = _service.GetUsersPaging(p, 10, search, type);
+
+                ViewBag.CurrentPage = p;
+                ViewBag.TotalPages = (int)Math.Ceiling((double)result.totalCount / 10);
+                ViewBag.Search = search;
+
+                // Truyền Type sang View để giữ trạng thái khi chuyển trang
+                ViewBag.Type = type;
+                ViewBag.Title = type == "customer" ? "Danh sách Khách hàng (User)" : "Danh sách Nhân viên";
+
+                return View(result.users);
+            }
+            catch (Exception)
+            {
+                return View(new List<User>());
+            }
         }
 
         // Hiện Modal Thêm/Sửa
-        public IActionResult Upsert(int? id)
+        public IActionResult Upsert(int? id, string type = "employee")
         {
-            // Nếu không có ID -> Thêm mới -> Trả về User rỗng
+            // Truyền Type sang Modal để hiển thị Dropdown Role cho đúng
+            ViewBag.Type = type;
+
             if (id == null || id == 0)
             {
-                return PartialView("_Upsert", new User());
+                // Tạo mới: Mặc định Role dựa theo Type
+                var newUser = new User
+                {
+                    Role = (type == "customer") ? "customer" : "staff"
+                };
+                return PartialView("_Upsert", newUser);
             }
 
-            // Nếu có ID -> Sửa -> Lấy từ DB
-            var user = _context.Users.Find(id.Value);
+            var user = _service.GetUserById(id.Value);
             if (user == null) return NotFound();
 
-            // Khi sửa, ta xóa password ở model đi để ô input trống
+            // Xóa password để ô input trống (bảo mật)
             user.Password = "";
-
             return PartialView("_Upsert", user);
         }
 
-        // Xử lý Lưu (Create/Update)
+        // Xử lý Lưu
         [HttpPost]
         public IActionResult Upsert(User model)
         {
-
-            if (model.UserId > 0)
+            // Nếu password trống khi Edit, ta xóa lỗi ModelState để nó Valid (vì Service sẽ tự lấy pass cũ)
+            if (model.UserId > 0 && string.IsNullOrEmpty(model.Password))
             {
-                // Nếu đang Sửa mà ô Password bỏ trống
-                if (string.IsNullOrEmpty(model.Password))
-                {
-                    // Lấy password cũ từ DB đắp vào
-                    var oldUser = _context.Users.AsNoTracking().FirstOrDefault(u => u.UserId == model.UserId);
-                    if (oldUser != null)
-                    {
-                        model.Password = oldUser.Password;
-                        // Xóa lỗi validation vì ta đã điền pass cũ vào rồi
-                        ModelState.Remove("Password");
-                    }
-                }
+                ModelState.Remove("Password");
             }
+
+            // Email có thể null, nên nếu null thì ModelState vẫn Valid (do ta khai báo string? Email)
 
             if (ModelState.IsValid)
             {
-                if (model.UserId == 0)
+                try
                 {
-                    // Thêm mới
-                    // Nên mã hóa mật khẩu (MD5/BCrypt) trước khi lưu, ở đây không mã hóa mà lưu thẳng vào DB
-                    model.CreatedAt = DateTime.Now;
-                    _context.Users.Add(model);
+                    _service.SaveUser(model);
+                    return Json(new { success = true });
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Cập nhật
-                    // Giữ nguyên ngày tạo cũ
-                    var oldUser = _context.Users.AsNoTracking().FirstOrDefault(u => u.UserId == model.UserId);
-                    if (oldUser != null) model.CreatedAt = oldUser.CreatedAt;
-
-                    _context.Users.Update(model);
+                    return Json(new { success = false, message = ex.Message });
                 }
-
-                _context.SaveChanges();
-                return Json(new { success = true });
             }
 
-            return Json(new { success = false, message = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại!" });
+            // Lấy lỗi chi tiết từ ModelState để báo về Client
+            var errors = string.Join("<br/>", ModelState.Values
+                                    .SelectMany(v => v.Errors)
+                                    .Select(e => e.ErrorMessage));
+
+            return Json(new { success = false, message = "Dữ liệu không hợp lệ:<br/>" + errors });
         }
 
-        // Xóa nhân viên
+        // Xóa
         [HttpPost]
         public IActionResult Delete(int id)
         {
-            var user = _context.Users.Find(id);
-            if (user == null) return Json(new { success = false, message = "Không tìm thấy nhân viên!" });
-
-            _context.Users.Remove(user);
-            _context.SaveChanges();
-
-            return Json(new { success = true });
+            try
+            {
+                _service.DeleteUser(id);
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
         }
     }
 }

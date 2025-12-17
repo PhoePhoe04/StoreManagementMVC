@@ -31,49 +31,64 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(string username, string password, string? ReturnUrl)
         {
-            // Kiểm tra username/password trong DB
-            // Lưu ý: Ở đây đang so sánh chuỗi thô.
-            // Thực tế nên mã hóa password (MD5/BCrypt) để bảo mật.
-            var user = _context.Users.FirstOrDefault(u => u.Username == username && u.Password == password);
+            // Tìm user theo Username trước
+            var user = _context.Users.FirstOrDefault(u => u.Username == username);
 
+            // Kiểm tra nếu user không tồn tại
             if (user == null)
             {
-                ViewBag.Error = "Sai tên đăng nhập hoặc mật khẩu!";
+                ViewBag.Error = "Tài khoản không tồn tại!";
                 return View();
             }
 
-            // Tạo danh sách các thông tin (Claims) để lưu vào Cookie
+            // Kiểm tra Mật khẩu 
+           
+            if (user.Password != password)
+            {
+                ViewBag.Error = "Sai mật khẩu!";
+                return View();
+            }
+
+            // KIỂM TRA QUYỀN 
+            // Chuyển về chữ thường để so sánh cho chính xác (tránh Admin vs admin)
+            string role = user.Role?.Trim().ToLower() ?? "";
+
+            if (role != "admin" && role != "staff")
+            {
+                ViewBag.Error = "Tài khoản của bạn không có quyền truy cập trang quản trị!";
+                return View();
+            }
+
+            // Tạo Claims để lưu phiên đăng nhập
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim("FullName", user.FullName ?? ""),
-                new Claim(ClaimTypes.Role, user.Role), // Lưu Role (admin/staff)
+                new Claim(ClaimTypes.Role, role), // Lưu role đã chuẩn hóa
                 new Claim("UserId", user.UserId.ToString())
             };
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
 
-            // Ghi Cookie xuống trình duyệt (Đăng nhập thành công)
+            // Ghi Cookie (Đăng nhập thành công)
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal);
 
-            // Chuyển hướng
+            // Chuyển hướng về trang cũ hoặc trang chủ Admin
             if (!string.IsNullOrEmpty(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
             {
-                return Redirect(ReturnUrl); // Quay lại trang định vào trước đó
+                return Redirect(ReturnUrl);
             }
 
-            return RedirectToAction("Index", "Home", new { area = "Admin" }); // Mặc định về trang chủ Admin
+            return RedirectToAction("Index", "Home", new { area = "Admin" });
         }
 
-        // Đăng xuất
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction("Login", "Account", new { area = "Admin" });
         }
 
-        // Trang báo lỗi khi không có quyền
         [AllowAnonymous]
         public IActionResult AccessDenied()
         {

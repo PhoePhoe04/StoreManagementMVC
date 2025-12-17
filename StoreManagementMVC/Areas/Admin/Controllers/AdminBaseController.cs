@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace StoreManagementMVC.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize]
+    [Authorize(Roles = "admin,staff")]
     public class AdminBaseController : Controller
     {
     }

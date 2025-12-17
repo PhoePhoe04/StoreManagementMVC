@@ -1,5 +1,7 @@
 ﻿using BCrypt.Net;
 using MailKit.Net.Smtp;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -39,7 +41,9 @@ namespace StoreManagementMVC.Controllers.Api
                 Username = dto.Username,
                 Password = hash,
                 FullName = dto.FullName,
-                Role = "customer"
+                Email = dto.Email,
+                Role = "customer",
+                CreatedAt = DateTime.Now
             };
             _context.Users.Add(user);
             await _context.SaveChangesAsync();

@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using StoreManagementMVC.Data;
 using StoreManagementMVC.Services;
 using System.Text;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,38 +31,75 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<CustomerService>();
+builder.Services.AddScoped<CategoryService>();
 builder.Services.AddScoped<SupplierService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<PromotionService>();
 builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<UserService>();
 
-// 👉 JWT Authentication (FIX HTML REDIRECT)
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+//// 👉 JWT Authentication 
+//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//    .AddJwtBearer(options =>
+//    {
+//        options.TokenValidationParameters = new TokenValidationParameters
+//        {
+//            ValidateIssuer = true,
+//            ValidateAudience = true,
+//            ValidateLifetime = true,
+//            ValidateIssuerSigningKey = true,
+//            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+//            ValidAudience = builder.Configuration["Jwt:Audience"],
+//            IssuerSigningKey = new SymmetricSecurityKey(
+//                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+//        };
+
+//        // ⭐ QUAN TRỌNG: chặn redirect HTML
+//        options.Events = new JwtBearerEvents
+//        {
+//            OnChallenge = context =>
+//            {
+//                context.HandleResponse();
+//                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+//                return Task.CompletedTask;
+//            }
+//        };
+//    });
+
+
+
+// 👉 CẤU HÌNH AUTHENTICATION (GỘP CHUNG JWT VÀ COOKIE)
+builder.Services.AddAuthentication(options =>
+{
+    // Đặt mặc định là Cookie (Để trang Admin tự Redirect khi chưa đăng nhập)
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+})
+.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+{
+    // Cấu hình cho Admin MVC
+    options.LoginPath = "/Admin/Account/Login";
+    options.AccessDeniedPath = "/Admin/Account/AccessDenied";
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+})
+.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+{
+    // Cấu hình cho API (Blazor gọi vào)
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-        };
-
-        // ⭐ QUAN TRỌNG: chặn redirect HTML
-        options.Events = new JwtBearerEvents
-        {
-            OnChallenge = context =>
-            {
-                context.HandleResponse();
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                return Task.CompletedTask;
-            }
-        };
-    });
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+    };
+});
 
 // 👉 CORS cho Blazor WASM
 builder.Services.AddCors(options =>
@@ -76,26 +112,16 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Thêm dịch vụ Authentication bằng Cookie
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        // Cấu hình đường dẫn: Nếu chưa đăng nhập mà vào Admin -> Tự đá về trang này
-        options.LoginPath = "/Admin/Account/Login";
-        options.AccessDeniedPath = "/Admin/Account/AccessDenied";
-        options.ExpireTimeSpan = TimeSpan.FromMinutes(60); // Cookie sống trong 60 phút
-    });
+var app = builder.Build();
 #endregion
 
-
-var app = builder.Build();
 
 #region Pipeline
 
 app.UseHttpsRedirection();
 
 // ⚠️ KHÔNG dùng UseStaticFiles nếu đây là API thuần
-// app.UseStaticFiles();
+app.UseStaticFiles();
 
 app.UseRouting();
 
@@ -106,6 +132,13 @@ app.UseAuthorization(); // Phân quyền (Bạn được làm gì?)
 
 // 👉 API endpoints
 app.MapControllers();
+
+
+// Route cho Admin Area
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}"
+);
 
 // 👉 MVC routes (Admin, Dashboard…)
 app.MapControllerRoute(

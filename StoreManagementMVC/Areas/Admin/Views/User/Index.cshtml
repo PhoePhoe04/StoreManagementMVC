@@ -1,14 +1,28 @@
 ﻿@using Store.Shared.Entities
 @model List<User>
 @{
-    ViewData["Title"] = "Quản lý Nhân viên";
+    // Lấy loại tài khoản hiện tại (employee/customer)
+    string currentType = ViewBag.Type ?? "employee";
+    ViewData["Title"] = ViewBag.Title;
+
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    string search = ViewBag.Search ?? "";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="mb-0 text-primary fw-bold">Danh sách Nhân viên</h3>
-    <button onclick="openModal()" class="btn btn-primary shadow-sm">
-        <i class="bi bi-person-plus-fill me-1"></i> Thêm nhân viên
-    </button>
+    <h3 class="mb-0 text-primary fw-bold">@ViewData["Title"]</h3>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex">
+            <input type="hidden" name="type" value="@currentType" />
+            <input type="text" name="search" value="@search" class="form-control me-2" placeholder="Tìm tên, username, email..." style="width: 250px;">
+            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+        </form>
+
+        <button onclick="openModal(null, '@currentType')" class="btn btn-primary shadow-sm text-nowrap">
+            <i class="bi bi-plus-lg me-1"></i> Thêm mới
+        </button>
+    </div>
 </div>
 
 <div class="card shadow-sm border-0">
@@ -19,37 +33,50 @@
                     <th class="ps-3">ID</th>
                     <th>Tên đăng nhập</th>
                     <th>Họ và tên</th>
+                    <th>Email</th>
                     <th>Vai trò</th>
-                    <th>Ngày tạo</th>
-                    <th class="text-center">Thao tác</th>
+                    <th class="text-center" style="width: 150px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var item in Model)
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="ps-3">#@item.UserId</td>
+                            <td class="fw-bold text-primary">@item.Username</td>
+                            <td>@item.FullName</td>
+                            <td>@(string.IsNullOrEmpty(item.Email) ? "-" : item.Email)</td>
+                            <td>
+                                @if (item.Role == "admin")
+                                {
+                                    <span class="badge bg-danger">Quản trị viên</span>
+                                }
+                                else if (item.Role == "staff")
+                                {
+                                    <span class="badge bg-info text-dark">Nhân viên</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Khách hàng</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                <button onclick="openModal(@item.UserId, '@currentType')" class="btn btn-sm btn-outline-warning me-1" title="Sửa">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button onclick="deleteUser(@item.UserId)" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
                 {
                     <tr>
-                        <td class="ps-3 text-muted">#@item.UserId</td>
-                        <td class="fw-bold text-dark">@item.Username</td>
-                        <td>@item.FullName</td>
-                        <td>
-                            @if (item.Role == "admin")
-                            {
-                                <span class="badge bg-danger">Quản trị viên</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-info text-dark">Nhân viên</span>
-                            }
-                        </td>
-                        <td class="text-muted small">@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td class="text-center">
-                            <button onclick="openModal(@item.UserId)" class="btn btn-sm btn-outline-warning me-1">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button onclick="deleteUser(@item.UserId)" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </td>
+                        <td colspan="6" class="text-center py-4 text-muted">Không tìm thấy dữ liệu</td>
                     </tr>
                 }
             </tbody>
@@ -57,14 +84,35 @@
     </div>
 </div>
 
-<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+@if (totalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { p = currentPage - 1, search = search, type = currentType })">Trước</a>
+            </li>
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(currentPage == i ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { p = i, search = search, type = currentType })">@i</a>
+                </li>
+            }
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { p = currentPage + 1, search = search, type = currentType })">Sau</a>
+            </li>
+        </ul>
+    </nav>
+}
+
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold">Thông tin Nhân viên</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title fw-bold">Thông tin Tài khoản</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="modalBody">
+                <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
             </div>
         </div>
     </div>
@@ -72,22 +120,22 @@
 
 @section Scripts {
     <script>
-        function openModal(id = null) {
+        // Hàm mở Modal (nhận thêm tham số type)
+        function openModal(id = null, type = 'employee') {
             $('#userModal').modal('show');
             $('#modalBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
 
-            // URL chuẩn Area Admin
             let baseUrl = '@Url.Action("Upsert", "User", new { area = "Admin" })';
-            let url = id ? `${baseUrl}?id=${id}` : baseUrl;
+            // Ghép URL: /Admin/User/Upsert?id=1&type=employee
+            let url = id ? `${baseUrl}?id=${id}&type=${type}` : `${baseUrl}?type=${type}`;
 
             $.get(url, function (data) {
                 $('#modalBody').html(data);
 
-                // Submit Form
+                // Xử lý Submit Form bên trong Modal
                 $('#upsertForm').submit(function (e) {
                     e.preventDefault();
                     let postUrl = '@Url.Action("Upsert", "User", new { area = "Admin" })';
-
                     $.post(postUrl, $(this).serialize(), function (res) {
                         if (res.success) {
                             $('#userModal').modal('hide');
@@ -98,13 +146,18 @@
                         }
                     });
                 });
+            }).fail(function() {
+                $('#modalBody').html('<div class="text-center text-danger">Lỗi tải dữ liệu</div>');
             });
         }
 
+        // Hàm xóa User
         function deleteUser(id) {
             Swal.fire({
-                title: 'Xóa nhân viên này?', text: "Không thể hoàn tác!", icon: 'warning',
-                showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy', confirmButtonColor: '#d33'
+                title: 'Xóa tài khoản này?',
+                text: "Dữ liệu sẽ mất vĩnh viễn!",
+                icon: 'warning',
+                showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy'
             }).then((result) => {
                 if (result.isConfirmed) {
                     let deleteUrl = '@Url.Action("Delete", "User", new { area = "Admin" })';

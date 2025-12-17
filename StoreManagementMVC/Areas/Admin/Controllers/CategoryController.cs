@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using StoreManagementMVC.Data;
 using Store.Shared.Entities;
+using StoreManagementMVC.Services;
 
 namespace StoreManagementMVC.Areas.Admin.Controllers
 {
@@ -8,55 +9,58 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
     [Route("Admin/[controller]/[action]")]
     public class CategoryController : AdminBaseController
     {
-        private readonly AppDbContext _context;
+        private readonly CategoryService _service;
 
-        public CategoryController(AppDbContext context)
+        // Inject Service
+        public CategoryController(CategoryService service)
         {
-            _context = context;
+            _service = service;
         }
 
-        // GET: /Category
-        public IActionResult Index()
+        // GET: /Category/Index
+        public IActionResult Index(int p = 1, string search = "")
         {
-            var categories = _context.Categories.ToList();
-            return View(categories);
+            // Gọi Service lấy dữ liệu phân trang + tìm kiếm
+            var result = _service.GetCategoriesPaging(p, 10, search);
+
+            ViewBag.CurrentPage = p;
+            ViewBag.TotalPages = (int)Math.Ceiling((double)result.totalCount / 10);
+            ViewBag.Search = search;
+
+            return View(result.categories);
         }
 
-        // Upsert (Thêm/Sửa) - Gọi Modal
+        // Hiện Modal Upsert
         public IActionResult Upsert(int? id)
         {
-            if(id == null) return PartialView("_Upsert", new Category());
+            if (id == null || id == 0)
+            {
+                return PartialView("_Upsert", new Category());
+            }
 
-            var category = _context.Categories.Find(id.Value);
+            var category = _service.GetCategoryById(id.Value);
             if (category == null) return NotFound();
 
             return PartialView("_Upsert", category);
         }
 
-        // POST: Upsert
-        [HttpPost]
+        // POST: Upsert (Lưu)
         [HttpPost]
         public IActionResult Upsert(Category category)
         {
-            // Kiểm tra dữ liệu hợp lệ 
             if (ModelState.IsValid)
             {
-                if (category.CategoryId == 0)
+                try
                 {
-                    // Thêm mới
-                    _context.Categories.Add(category);
+                    _service.SaveCategory(category);
+                    return Json(new { success = true });
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Cập nhật
-                    _context.Categories.Update(category);
+                    return Json(new { success = false, message = ex.Message });
                 }
-
-                _context.SaveChanges();
-                return Json(new { success = true });
             }
 
-            // Trả về lỗi nếu dữ liệu không hợp lệ
             return Json(new { success = false, message = "Dữ liệu nhập vào không hợp lệ!" });
         }
 
@@ -64,13 +68,15 @@ namespace StoreManagementMVC.Areas.Admin.Controllers
         [HttpPost]
         public IActionResult Delete(int id)
         {
-            var category = _context.Categories.Find(id);
-            if(category == null) return Json(new { success = false, message = "Không tìm thấy!" });
-
-            _context.Categories.Remove(category);
-            _context.SaveChanges();
-
-            return Json(new { success = true });
+            try
+            {
+                _service.DeleteCategory(id);
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
         }
     }
 }

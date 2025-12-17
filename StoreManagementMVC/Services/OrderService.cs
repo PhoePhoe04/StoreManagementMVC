@@ -56,11 +56,42 @@ namespace StoreManagementMVC.Services
         public void UpdateOrderStatus(int orderId, string newStatus)
         {
             var order = _context.Orders.Find(orderId);
-            if (order != null)
+            if (order == null) throw new Exception("Không tìm thấy đơn hàng!");
+
+            // Nếu chuyển sang trạng thái "paid" (Đã thanh toán)
+            if (newStatus == "paid" && order.Status != "paid")
             {
-                order.Status = newStatus;
-                _context.SaveChanges();
+                // 1. Cập nhật trạng thái
+                order.Status = "paid";
+
+                // 2. TẠO PAYMENT RECORD 
+                // Kiểm tra xem đã có thanh toán chưa để tránh trùng lặp
+                var existingPayment = _context.Payments.FirstOrDefault(p => p.OrderId == orderId);
+                if (existingPayment == null)
+                {
+                    var payment = new Payment
+                    {
+                        OrderId = orderId,
+                        Amount = order.TotalAmount, // Giả định thanh toán full 100%
+                        PaymentMethod = "cash",     // Mặc định là tiền mặt (vì Admin xác nhận thủ công)
+                        PaymentDate = DateTime.Now
+                    };
+                    _context.Payments.Add(payment);
+                }
             }
+            // Nếu hủy đơn (canceled)
+            else if (newStatus == "canceled" && order.Status != "canceled")
+            {
+                // Hiện tại chỉ đổi status
+                order.Status = "canceled";
+            }
+            else
+            {
+                // Các trạng thái khác (shipping, completed...)
+                order.Status = newStatus;
+            }
+
+            _context.SaveChanges();
         }
 
         // Xóa đơn hàng

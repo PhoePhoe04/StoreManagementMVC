@@ -1,14 +1,23 @@
-﻿@using Store.Shared.Entities
-@model List<Category>
+﻿@model List<Store.Shared.Entities.Category>
 @{
-    ViewData["Title"] = "Quản lý danh mục";
+    ViewData["Title"] = "Quản lý Danh mục";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    string search = ViewBag.Search ?? "";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3 class="mb-0 text-primary fw-bold">Danh sách Danh mục</h3>
-    <button onclick="openModal()" class="btn btn-primary shadow-sm">
-        <i class="bi bi-plus-lg me-1"></i> Thêm mới
-    </button>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex">
+            <input type="text" name="search" value="@search" class="form-control me-2" placeholder="Tìm tên danh mục..." style="width: 250px;">
+            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+        </form>
+
+        <button onclick="openModal()" class="btn btn-primary shadow-sm text-nowrap">
+            <i class="bi bi-plus-lg me-1"></i> Thêm mới
+        </button>
+    </div>
 </div>
 
 <div class="card shadow-sm border-0">
@@ -22,15 +31,25 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var item in Model)
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="ps-3 text-muted">#@item.CategoryId</td>
+                            <td class="fw-bold">@item.CategoryName</td>
+
+                            <td class="text-center">
+                                <button onclick="openModal(@item.CategoryId)" class="btn btn-sm btn-outline-warning me-1" title="Sửa"><i class="bi bi-pencil"></i></button>
+                                <button onclick="deleteCategory(@item.CategoryId)" class="btn btn-sm btn-outline-danger" title="Xóa"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
                 {
                     <tr>
-                        <td class="ps-3 text-muted">#@item.CategoryId</td>
-                        <td class="fw-bold text-dark">@item.CategoryName</td>
-                        <td class="text-center">
-                            <button onclick="openModal(@item.CategoryId)" class="btn btn-sm btn-outline-warning me-1"><i class="bi bi-pencil"></i></button>
-                            <button onclick="deleteCategory(@item.CategoryId)" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                        </td>
+                        <td colspan="3" class="text-center py-4 text-muted">Không tìm thấy danh mục nào</td>
                     </tr>
                 }
             </tbody>
@@ -38,14 +57,35 @@
     </div>
 </div>
 
-<div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+@if (totalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { p = currentPage - 1, search = search })">Trước</a>
+            </li>
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(currentPage == i ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { p = i, search = search })">@i</a>
+                </li>
+            }
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { p = currentPage + 1, search = search })">Sau</a>
+            </li>
+        </ul>
+    </nav>
+}
+
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold">Thông tin danh mục</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title fw-bold">Thông tin Danh mục</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="modalBody">
+                <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
             </div>
         </div>
     </div>
@@ -53,51 +93,46 @@
 
 @section Scripts {
     <script>
+        // Hàm mở modal Thêm/Sửa
         function openModal(id = null) {
             $('#categoryModal').modal('show');
-            $('#modalBody')
-            .html('<div class="text-center py-3"><div class="spinner-border text-primary"></div></div>');
-            let url = id
-                ? '@Url.Action("Upsert", "Category", new { area = "Admin" })?id=' + id
-                : '@Url.Action("Upsert", "Category", new { area = "Admin" })';
+            $('#modalBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
+
+            let baseUrl = '@Url.Action("Upsert", "Category", new { area = "Admin" })';
+            let url = id ? `${baseUrl}?id=${id}` : baseUrl;
 
             $.get(url, function (data) {
                 $('#modalBody').html(data);
+
+                // Gắn sự kiện submit cho form sau khi load xong
                 $('#upsertForm').submit(function (e) {
                     e.preventDefault();
                     let postUrl = '@Url.Action("Upsert", "Category", new { area = "Admin" })';
                     $.post(postUrl, $(this).serialize(), function (res) {
                         if (res.success) {
                             $('#categoryModal').modal('hide');
-                            Swal.fire('Thành công', '', 'success').then(() => location.reload());
-                        }else {
-                            Swal.fire('Lỗi', res.message || 'Có lỗi xảy ra', 'error');
+                            Swal.fire({ icon: 'success', title: 'Thành công', timer: 1000, showConfirmButton: false }).then(() => location.reload());
+                        } else {
+                            Swal.fire('Lỗi', res.message, 'error');
                         }
-                    }).fail(function() {
-                        Swal.fire('Lỗi', 'Không thể kết nối đến server', 'error');
                     });
                 });
+            }).fail(function() {
+                $('#modalBody').html('<div class="text-center text-danger">Lỗi tải dữ liệu</div>');
             });
         }
 
+        // Hàm xóa
         function deleteCategory(id) {
             Swal.fire({
-                title: 'Xóa danh mục?',
-                text: "Dữ liệu sẽ mất vĩnh viễn!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Xóa',
-                cancelButtonText: 'Hủy'
+                title: 'Xóa danh mục này?', text: "Dữ liệu sẽ mất vĩnh viễn!", icon: 'warning',
+                showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy'
             }).then((result) => {
                 if (result.isConfirmed) {
                     let deleteUrl = '@Url.Action("Delete", "Category", new { area = "Admin" })';
                     $.post(deleteUrl, { id: id }, function (res) {
-                        if (res.success) {
-                            Swal.fire('Đã xóa', '', 'success')
-                                .then(() => location.reload());
-                        }else {
-                            Swal.fire('Lỗi', res.message, 'error');
-                        }
+                        if (res.success) Swal.fire('Đã xóa', '', 'success').then(() => location.reload());
+                        else Swal.fire('Lỗi', res.message, 'error');
                     });
                 }
             })

@@ -120,22 +120,30 @@ namespace StoreManagementMVC.Services
 
 
         // Lấy sản phẩm có phân trang
-        public (List<Product> products, int totalCount) GetProductsPaging(int pageIndex, int pageSize)
+        public (List<Product> products, int totalCount) GetProductsPaging(int pageIndex, int pageSize, string keyword = "")
         {
+            // Include để lấy luôn tên Danh mục và Nhà cung cấp
             var query = _context.Products
                 .Include(p => p.Category)
                 .Include(p => p.Supplier)
                 .Include(p => p.Inventory)
-                .AsQueryable(); // Sắp xếp sản phẩm mới nhất lên đầu
+                .AsQueryable();
+
+            // Tìm theo Tên hoặc Mã vạch
+            if (!string.IsNullOrEmpty(keyword))
+            {
+                query = query.Where(p => p.ProductName.Contains(keyword) ||
+                                         (p.Barcode != null && p.Barcode.Contains(keyword)));
+            }
 
             int totalCount = query.Count();
 
-            var products = query.OrderByDescending(p => p.ProductId)
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+            var list = query.OrderByDescending(p => p.ProductId)
+                            .Skip((pageIndex - 1) * pageSize)
+                            .Take(pageSize)
+                            .ToList();
 
-            return (products, totalCount);
+            return (list, totalCount);
         }
 
         // Tìm kiếm sản phẩm (cho chức năng Autocomplete)

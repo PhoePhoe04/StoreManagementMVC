@@ -1,4 +1,6 @@
-﻿@inject CartService CartService
+﻿@using Store.Shared.DTOs
+@inject StoreClient.Services.CartService CartService
+@inject ToastService ToastService
 
 <div class="card h-100 border-0 shadow-hover product-card">
     <div class="ratio ratio-4x3 position-relative overflow-hidden">
@@ -6,23 +8,25 @@
             // Khai báo đường dẫn Backend (Cổng 7177)
             string backendUrl = "https://localhost:7177";
 
-            // Logic ghép đường dẫn: Backend + Đường dẫn trong DB
+            // Logic ghép đường dẫn hiển thị ảnh
             string imageUrl;
             if (string.IsNullOrEmpty(Product.ImageUrl))
             {
-                // Nếu không có ảnh -> Lấy ảnh mặc định từ Backend
-                imageUrl = $"{backendUrl}/images/products/default-image.png";
+                imageUrl = $"{backendUrl}/images/default-image.png";
             }
             else
             {
-                imageUrl = $"{backendUrl}{Product.ImageUrl}";
+                // Nếu ảnh đã có http thì giữ nguyên, nếu chưa thì nối backendUrl
+                imageUrl = Product.ImageUrl.StartsWith("http")
+                ? Product.ImageUrl
+                : $"{backendUrl}{Product.ImageUrl}";
             }
         }
 
         <img src="@imageUrl"
              class="card-img-top object-fit-cover @(Product.Quantity == 0 ? "opacity-50" : "")"
              alt="@Product.ProductName"
-             onerror="this.onerror=null;this.src='@backendUrl/images/products/default-image.png';">
+             onerror="this.onerror=null;this.src='@backendUrl/images/default-image.png';">
 
         @if (Product.Quantity == 0)
         {
@@ -59,12 +63,24 @@
 
 @code {
     [Parameter]
-    public ProductDTO Product { get; set; } = new(); 
-
-    private void AddToCart()
+    public ProductDTO Product { get; set; } = new();
+    private async Task AddToCart()
     {
-        CartService.AddToCart(Product);
+        // Tạo đối tượng CartItemDTO từ ProductDTO
+        var cartItem = new CartItemDTO
+            {
+                ProductId = Product.ProductId,
+                ProductName = Product.ProductName,
+                Price = Product.Price,
+                ImageUrl = Product.ImageUrl,
 
-        Console.WriteLine($"Đã thêm {Product.ProductName} vào giỏ!");
+            // Số lượng mua mặc định là 1 (Khác với Product.Quantity là số lượng tồn kho)
+                Quantity = 1
+            };
+
+        // Gọi Service để lưu vào LocalStorage
+        await CartService.AddToCart(cartItem);
+
+        ToastService.ShowSuccess($"Đã thêm {Product.ProductName} vào giỏ");
     }
 }

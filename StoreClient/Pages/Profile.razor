@@ -1,97 +1,162 @@
 ﻿@page "/profile"
+@using System.Net.Http.Headers
 @using Store.Shared.Entities
 @inject HttpClient Http
-@inject ToastService ToastService
-
-<PageTitle>Thông tin cá nhân</PageTitle>
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-md-3">
-            <div class="list-group">
-                <a href="/profile" class="list-group-item list-group-item-action active">
-                    <i class="bi bi-person-circle me-2"></i> Thông tin tài khoản
-                </a>
-                <a href="/history" class="list-group-item list-group-item-action">
-                    <i class="bi bi-clock-history me-2"></i> Lịch sử đơn hàng
-                </a>
+    <h3 class="mb-4 fw-bold text-primary">Thông tin tài khoản</h3>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
+            <p class="mt-2 text-muted">Đang tải dữ liệu...</p>
         </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger shadow-sm">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+        </div>
+    }
+    else if (customer != null)
+    {
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <EditForm Model="customer" OnValidSubmit="HandleUpdate">
+                    <DataAnnotationsValidator />
 
-        <div class="col-md-9">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white py-3">
-                    <h5 class="mb-0 fw-bold">Cập nhật thông tin</h5>
-                </div>
-                <div class="card-body">
-                    @if (customer == null)
-                    {
-                        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
-                    }
-                    else
-                    {
-                        <EditForm Model="customer" OnValidSubmit="HandleUpdate">
-                            <DataAnnotationsValidator />
-
+                    <div class="row">
+                        <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Họ và tên</label>
-                                <InputText @bind-Value="customer.Name" class="form-control" />
+                                <label class="form-label fw-bold">Họ và tên</label>
+                                <InputText @bind-Value="customer.Name" class="form-control" placeholder="Nhập họ tên của bạn" />
                                 <ValidationMessage For="@(() => customer.Name)" />
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Số điện thoại</label>
-                                <InputText @bind-Value="customer.Phone" class="form-control" />
+                                <label class="form-label fw-bold">Email</label>
+                                <InputText @bind-Value="customer.Email" class="form-control bg-light" readonly />
+                                <small class="text-muted">Email đăng ký không thể thay đổi</small>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Số điện thoại</label>
+                                <InputText @bind-Value="customer.Phone" class="form-control" placeholder="Nhập số điện thoại" />
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Email</label>
-                                <InputText @bind-Value="customer.Email" class="form-control" />
+                                <label class="form-label fw-bold">Địa chỉ nhận hàng</label>
+                                <InputTextArea @bind-Value="customer.Address" class="form-control" rows="3" placeholder="Số nhà, đường, phường/xã..." />
                             </div>
+                        </div>
+                    </div>
 
-                            <div class="mb-3">
-                                <label class="form-label">Địa chỉ</label>
-                                <InputTextArea @bind-Value="customer.Address" class="form-control" rows="3" />
-                            </div>
-
-                            <button type="submit" class="btn btn-primary px-4">
-                                <i class="bi bi-save me-1"></i> Lưu thay đổi
-                            </button>
-                        </EditForm>
-                    }
-                </div>
+                    <div class="d-flex justify-content-end mt-4 pt-3 border-top">
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-save me-1"></i> Lưu thay đổi
+                        </button>
+                    </div>
+                </EditForm>
             </div>
         </div>
-    </div>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success mt-3 shadow-sm alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i> @successMessage
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+    }
 </div>
 
 @code {
     private Customer? customer;
-    private int fakeCustomerId = 1; // HARDCODE: Giả lập User ID = 1
+    private bool isLoading = true;
+    private string errorMessage = "";
+    private string successMessage = "";
 
     protected override async Task OnInitializedAsync()
     {
-        // Gọi API lấy thông tin
         try
         {
-            customer = await Http.GetFromJsonAsync<Customer>($"api/CustomerApi/{fakeCustomerId}");
+            // 1. LẤY TOKEN (Khớp với cách lưu bên Login.razor)
+            var token = await JS.InvokeAsync<string>("localStorage.getItem", "authToken");
+
+            if (string.IsNullOrEmpty(token))
+            {
+                errorMessage = "Bạn chưa đăng nhập. Vui lòng đăng nhập để xem hồ sơ.";
+                isLoading = false;
+                return;
+            }
+
+            // 2. GẮN TOKEN VÀO HEADER (Bước quan trọng nhất để sửa lỗi 401)
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            // 3. GỌI API (Đường dẫn api/customer/profile như đã chốt)
+            var response = await Http.GetAsync("api/customer/profile");
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Trường hợp lấy được dữ liệu ngon lành
+                customer = await response.Content.ReadFromJsonAsync<Customer>();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Trường hợp 404: Chưa có hồ sơ -> Tạo mới để người dùng nhập
+                // (Logic này khớp với việc bạn chưa có data trong bảng Customer)
+                customer = new Customer { Name = "", Address = "", Phone = "" };
+            }
+            else
+            {
+                errorMessage = $"Lỗi tải dữ liệu: {response.ReasonPhrase} ({response.StatusCode})";
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            ToastService.ShowToast("Không tìm thấy thông tin khách hàng", ToastLevel.Error);
+            errorMessage = "Lỗi hệ thống: " + ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
     private async Task HandleUpdate()
     {
-        var response = await Http.PutAsJsonAsync($"api/CustomerApi/{fakeCustomerId}", customer);
-        if (response.IsSuccessStatusCode)
+        successMessage = "";
+        errorMessage = "";
+
+        try
         {
-            ToastService.ShowToast("Cập nhật thành công!", ToastLevel.Success);
+            // Gọi API Update (Token đã được gắn ở OnInitializedAsync rồi, không cần gắn lại)
+            var response = await Http.PutAsJsonAsync("api/customer/profile", customer);
+
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Cập nhật hồ sơ thành công!";
+                // Cập nhật lại customer với dữ liệu mới nhất từ server trả về (nếu cần)
+                customer = await response.Content.ReadFromJsonAsync<Customer>();
+            }
+            else
+            {
+                errorMessage = "Cập nhật thất bại. Vui lòng thử lại.";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            ToastService.ShowToast("Lỗi khi cập nhật.", ToastLevel.Error);
+            errorMessage = "Lỗi khi lưu: " + ex.Message;
         }
     }
 }

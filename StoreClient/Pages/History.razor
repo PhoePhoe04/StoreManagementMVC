@@ -1,171 +1,154 @@
 ﻿@page "/history"
+@using System.Net.Http.Headers
 @using Store.Shared.Entities
 @inject HttpClient Http
-
-<PageTitle>Lịch sử đơn hàng</PageTitle>
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-md-3">
-            <div class="list-group">
-                <a href="/profile" class="list-group-item list-group-item-action">
-                    <i class="bi bi-person-circle me-2"></i> Thông tin tài khoản
-                </a>
-                <a href="/history" class="list-group-item list-group-item-action active">
-                    <i class="bi bi-clock-history me-2"></i> Lịch sử đơn hàng
-                </a>
+    <h3 class="mb-4 fw-bold text-primary">Lịch sử đơn hàng</h3>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
+            <p class="mt-2 text-muted">Đang tải dữ liệu...</p>
         </div>
-
-        <div class="col-md-9">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white py-3">
-                    <h5 class="mb-0 fw-bold">Đơn hàng của tôi</h5>
-                </div>
-                <div class="card-body p-0">
-                    @if (orders == null)
-                    {
-                        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
-                    }
-                    else if (orders.Count == 0)
-                    {
-                        <div class="text-center py-5 text-muted">Bạn chưa có đơn hàng nào.</div>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="ps-3">Mã đơn</th>
-                                        <th>Ngày đặt</th>
-                                        <th>Tổng tiền</th>
-                                        <th>Trạng thái</th>
-                                        <th class="text-center">Chi tiết</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var order in orders)
-                                    {
-                                        <tr>
-                                            <td class="ps-3 fw-bold">#@order.OrderId</td>
-                                            <td>@order.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
-                                            <td class="text-danger fw-bold">@order.TotalAmount.ToString("N0") ₫</td>
-                                            <td>
-                                                @if (order.Status == "pending")
-                                                {
-                                                    <span class="badge bg-warning text-dark">Chờ xử lý</span>
-                                                }
-                                                else if (order.Status == "paid")
-                                                {
-                                                    <span class="badge bg-success">Đã thanh toán</span>
-                                                }
-                                                else if (order.Status == "canceled")
-                                                {
-                                                    <span class="badge bg-danger">Đã hủy</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-secondary">@order.Status</span>
-                                                }
-                                            </td>
-                                            <td class="text-center">
-                                                <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowDetail(order)">
-                                                    Xem
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                </div>
-            </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger shadow-sm">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
         </div>
-    </div>
-</div>
-
-@if (selectedOrder != null)
-{
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold">Chi tiết đơn hàng #@selectedOrder.OrderId</h5>
-                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <strong>Người nhận:</strong> @selectedOrder.Customer?.Name <br />
-                            <strong>SĐT:</strong> @selectedOrder.Customer?.Phone <br />
-                            <strong>Địa chỉ:</strong> @selectedOrder.Customer?.Address
-                        </div>
-                        <div class="col-6 text-end">
-                            <strong>Ngày đặt:</strong> @selectedOrder.OrderDate.ToString("dd/MM/yyyy") <br />
-                            <strong class="text-danger">Tổng tiền: @selectedOrder.TotalAmount.ToString("N0") ₫</strong>
-                        </div>
-                    </div>
-
-                    <table class="table table-bordered">
-                        <thead>
+    }
+    else if (orders == null || orders.Count == 0)
+    {
+        <div class="text-center py-5 bg-light rounded shadow-sm">
+            <i class="bi bi-cart-x text-muted" style="font-size: 3rem;"></i>
+            <h5 class="mt-3">Bạn chưa có đơn hàng nào</h5>
+            <p class="text-muted">Hãy dạo một vòng cửa hàng và mua sắm ngay nhé!</p>
+            <a href="/" class="btn btn-primary mt-2">Về trang chủ</a>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-secondary">
                             <tr>
-                                <th>Sản phẩm</th>
-                                <th class="text-center">SL</th>
-                                <th class="text-end">Đơn giá</th>
-                                <th class="text-end">Thành tiền</th>
+                                <th class="ps-4">Mã đơn</th>
+                                <th>Ngày đặt</th>
+                                <th>Tổng tiền</th>
+                                <th>Trạng thái</th>
+                                <th class="text-end pe-4">Chi tiết</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var item in selectedOrder.OrderItems)
+                            @foreach (var item in orders)
                             {
                                 <tr>
-                                    <td>
-                                        @* Nếu muốn hiện tên SP thì cần Include Product ở API, 
-                                           hoặc nếu OrderItem đã lưu sẵn tên SP thì dùng luôn *@
-                                        SP #@item.ProductId
+                                    <td class="ps-4 fw-bold text-primary">#@item.OrderId</td>
+                                    <td>@item.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td class="fw-bold text-success">
+                                        @item.TotalAmount.ToString("N0") ₫
                                     </td>
-                                    <td class="text-center">@item.Quantity</td>
-                                    <td class="text-end">@item.Price.ToString("N0")</td>
-                                    <td class="text-end">@item.Subtotal.ToString("N0")</td>
+                                    <td>
+                                        @if (item.Status?.ToLower() == "pending")
+                                        {
+                                            <span class="badge bg-warning text-dark">Chờ xử lý</span>
+                                        }
+                                        else if (item.Status?.ToLower() == "completed")
+                                        {
+                                            <span class="badge bg-success">Hoàn thành</span>
+                                        }
+                                        else if (item.Status?.ToLower() == "cancelled")
+                                        {
+                                            <span class="badge bg-danger">Đã hủy</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@item.Status</span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewDetails(item.OrderId)">
+                                            Xem
+                                        </button>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Đóng</button>
-                </div>
             </div>
         </div>
-    </div>
-}
+    }
+</div>
 
 @code {
     private List<Order>? orders;
-    private Order? selectedOrder;
-    private int fakeCustomerId = 1; // HARDCODE
+    private bool isLoading = true;
+    private string errorMessage = "";
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            orders = await Http.GetFromJsonAsync<List<Order>>($"api/OrderApi/history/{fakeCustomerId}");
+            // 1. LẤY TOKEN (Giống hệt trang Profile)
+            var token = await JS.InvokeAsync<string>("localStorage.getItem", "authToken");
+
+            if (string.IsNullOrEmpty(token))
+            {
+                errorMessage = "Bạn chưa đăng nhập. Vui lòng đăng nhập để xem lịch sử.";
+                isLoading = false;
+                return;
+            }
+
+            // 2. GẮN HEADER
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            // 3. GỌI API (Đảm bảo Backend có Route này)
+            // Lưu ý: Route này phải khớp với OrderApiController
+            var response = await Http.GetAsync("api/order/my-orders");
+
+            if (response.IsSuccessStatusCode)
+            {
+                orders = await response.Content.ReadFromJsonAsync<List<Order>>();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.";
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Nếu backend trả 404 nghĩa là chưa có đơn hàng nào
+                orders = new List<Order>();
+            }
+            else
+            {
+                errorMessage = $"Lỗi tải dữ liệu: {response.StatusCode}";
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            orders = new List<Order>();
+            errorMessage = "Lỗi hệ thống: " + ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
-    private void ShowDetail(Order order)
+    private void ViewDetails(int orderId)
     {
-        selectedOrder = order;
-    }
+        // Điều hướng sang trang chi tiết đơn hàng (nếu bạn làm sau này)
+        // Navigation.NavigateTo($"/order-details/{orderId}");
 
-    private void CloseModal()
-    {
-        selectedOrder = null;
+        // Hoặc tạm thời alert
+        Console.WriteLine($"Xem chi tiết đơn: {orderId}");
     }
 }

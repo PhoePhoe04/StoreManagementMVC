@@ -5,66 +5,47 @@
 @inject IJSRuntime JS
 @inject CustomAuthStateProvider CustomAuthProvider
 
+@using Microsoft.AspNetCore.Components.Authorization
+@using StoreClient.Services
+@using Store.Shared.Entities
+
 @implements IDisposable
 
 <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
     <div class="container">
 
-        <!-- Brand -->
         <a class="navbar-brand fw-bold" href="/">
             <i class="bi bi-bag-heart-fill me-2 text-primary"></i>MyStore
         </a>
 
-        <!-- Toggle -->
         <button class="navbar-toggler" type="button"
                 data-bs-toggle="collapse"
                 data-bs-target="#navbarContent">
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <!-- Content -->
         <div class="collapse navbar-collapse" id="navbarContent">
 
-            <!-- Left -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-semibold">
-
                 <li class="nav-item">
-                    <NavLink class="nav-link"
-                             href=""
-                             Match="NavLinkMatch.All">
-                        Trang chủ
-                    </NavLink>
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Trang chủ</NavLink>
                 </li>
 
-                <!-- Categories -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle"
-                       role="button"
-                       @onclick="ToggleDropdown"
-                       @onclick:preventDefault>
+                    <a class="nav-link dropdown-toggle" role="button" @onclick="ToggleDropdown" @onclick:preventDefault>
                         Danh mục
                     </a>
-
                     <ul class="dropdown-menu border-0 shadow @(showDropdown ? "show" : "")">
-
                         <li>
-                            <NavLink class="dropdown-item"
-                                     href="/products"
-                                     @onclick="CloseDropdown">
-                                Tất cả sản phẩm
-                            </NavLink>
+                            <NavLink class="dropdown-item" href="/products" @onclick="CloseDropdown">Tất cả sản phẩm</NavLink>
                         </li>
-
                         @if (categories.Any())
                         {
                             <li><hr class="dropdown-divider" /></li>
-
                             @foreach (var cat in categories)
                             {
                                 <li>
-                                    <NavLink class="dropdown-item"
-                                             href="@($"/products?categoryId={cat.CategoryId}")"
-                                             @onclick="CloseDropdown">
+                                    <NavLink class="dropdown-item" href="@($"/products?categoryId={cat.CategoryId}")" @onclick="CloseDropdown">
                                         @cat.CategoryName
                                     </NavLink>
                                 </li>
@@ -74,25 +55,16 @@
                 </li>
             </ul>
 
-            <!-- Search -->
-            <form class="d-flex me-3"
-                  style="min-width:280px"
-                  @onsubmit="HandleSearch"
-                  @onsubmit:preventDefault>
+            <form class="d-flex me-3" style="min-width:280px" @onsubmit="HandleSearch" @onsubmit:preventDefault>
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0">
                         <i class="bi bi-search"></i>
                     </span>
-                    <input class="form-control border-start-0 bg-light"
-                           placeholder="Tìm sản phẩm..."
-                           @bind="keyword" />
+                    <input class="form-control border-start-0 bg-light" placeholder="Tìm sản phẩm..." @bind="keyword" />
                 </div>
             </form>
 
-            <!-- Right -->
             <div class="d-flex align-items-center gap-3">
-
-                <!-- Cart -->
                 <NavLink href="/cart" class="btn position-relative">
                     <i class="bi bi-cart3 fs-4"></i>
                     @if (cartCount > 0)
@@ -103,32 +75,18 @@
                     }
                 </NavLink>
 
-                <!-- Auth -->
                 @if (isAuthenticated)
                 {
                     <div class="dropdown">
-                        <button class="btn btn-primary btn-sm rounded-pill dropdown-toggle"
-                                data-bs-toggle="dropdown">
+                        <button class="btn btn-primary btn-sm rounded-pill dropdown-toggle" data-bs-toggle="dropdown">
                             @userName
                         </button>
-
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li>
-                                <NavLink class="dropdown-item" href="/profile">
-                                    Hồ sơ
-                                </NavLink>
-                            </li>
-                            <li>
-                                <NavLink class="dropdown-item" href="/order-history">
-                                    Đơn hàng
-                                </NavLink>
-                            </li>
+                            <li><NavLink class="dropdown-item" href="/profile">Hồ sơ</NavLink></li>
+                            <li><NavLink class="dropdown-item" href="/history">Đơn hàng</NavLink></li>
                             <li><hr class="dropdown-divider" /></li>
                             <li>
-                                <a class="dropdown-item text-danger"
-                                   href="#"
-                                   @onclick="Logout"
-                                   @onclick:preventDefault>
+                                <a class="dropdown-item text-danger" href="#" @onclick="Logout" @onclick:preventDefault>
                                     Đăng xuất
                                 </a>
                             </li>
@@ -137,8 +95,7 @@
                 }
                 else
                 {
-                    <NavLink href="/login"
-                             class="btn btn-primary btn-sm rounded-pill px-3">
+                    <NavLink href="/login" class="btn btn-primary btn-sm rounded-pill px-3">
                         Đăng nhập
                     </NavLink>
                 }
@@ -152,13 +109,15 @@
     private Category[] categories = Array.Empty<Category>();
     private int cartCount;
     private bool showDropdown;
-
     private bool isAuthenticated;
     private string userName = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
+        // Đăng ký sự kiện
         CartService.OnChange += UpdateCartCount;
+
+        // Gọi hàm cập nhật lần đầu
         UpdateCartCount();
 
         await LoadCategoriesSafe();
@@ -169,8 +128,8 @@
     {
         try
         {
-            categories = await Http.GetFromJsonAsync<Category[]>("api/CategoryApi")
-                         ?? Array.Empty<Category>();
+            // Lưu ý: Đảm bảo API Backend có route này
+            categories = await Http.GetFromJsonAsync<Category[]>("api/CategoryApi") ?? Array.Empty<Category>();
         }
         catch
         {
@@ -189,14 +148,15 @@
         catch
         {
             isAuthenticated = false;
-            userName = "";
         }
     }
 
-    private void UpdateCartCount()
+    // ⭐ QUAN TRỌNG: Sửa thành async void để await CartService mới
+    private async void UpdateCartCount()
     {
-        cartCount = CartService.GetCartItems().Sum(x => x.Quantity);
-        InvokeAsync(StateHasChanged);
+        var items = await CartService.GetCartItems();
+        cartCount = items.Sum(x => x.Quantity);
+        StateHasChanged(); // Bắt buộc gọi để UI vẽ lại số badge
     }
 
     private void ToggleDropdown() => showDropdown = !showDropdown;
@@ -204,10 +164,7 @@
 
     private void HandleSearch()
     {
-        var url = string.IsNullOrWhiteSpace(keyword)
-            ? "/products"
-            : $"/products?search={keyword}";
-
+        var url = string.IsNullOrWhiteSpace(keyword) ? "/products" : $"/products?search={keyword}";
         NavManager.NavigateTo(url);
     }
 
